@@ -12,7 +12,8 @@ Current workflow status:
 
 - GitHub Pages is enabled with `build_type=workflow`.
 - Repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured.
-- Deploy Pages workflow run `28708434747` passed on `main`.
+- Latest Deploy Pages workflow run `28709974463` passed on `main`.
+- Live Pages Smoke workflow run `28710032056` passed against `https://adamaitiss.github.io/digest/` at 402 x 874.
 - Yandex Timer triggers are active for all five pipeline jobs.
 - Scheduled pipeline work belongs in Yandex Timer triggers; GitHub Actions workflows must not use `schedule:`.
 
@@ -102,6 +103,14 @@ GitHub:
 - Rotate repository secrets in Settings -> Secrets and variables -> Actions, or with `gh secret set`.
 
 ## Live Smoke Test
+
+Repeat the deployed unauthenticated smoke test from GitHub-hosted infrastructure:
+
+```bash
+gh workflow run live-pages-smoke.yml --repo adamaitiss/digest --ref main
+```
+
+This checks that GitHub Pages renders the auth screen at iPhone width, the primary magic-link control is visible, the PWA manifest is reachable, and there are no relevant console errors.
 
 Expected end-to-end flow:
 

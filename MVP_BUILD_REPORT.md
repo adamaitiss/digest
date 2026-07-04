@@ -80,6 +80,9 @@ Screenshots from the local real-backend smoke test:
 - GitHub Pages deploy run `28709775117` passed on `main`.
 - GitHub Actions CI run `28709839518` passed on `main` for commit `722326b`.
 - GitHub Pages deploy run `28709839529` passed on `main` for commit `722326b`.
+- GitHub Actions CI run `28709974443` passed on `main` for commit `ef8137d`.
+- GitHub Pages deploy run `28709974463` passed on `main` for commit `ef8137d`.
+- Live Pages Smoke run `28710032056` passed from GitHub-hosted infrastructure: Chromium loaded `https://adamaitiss.github.io/digest/` at 402 x 874, rendered the `Personal News Swipe Digest` auth screen, found the `Send magic link` control, fetched the manifest, verified `display=standalone` and `start_url=/digest/`, and found no relevant console errors/warnings.
 
 ## Optimization / Cleanup Pass
 
@@ -127,7 +130,7 @@ This is below the PRD target of about `$1/day`. The first live run enriched 80 a
 
 ## Still Rough / Remaining Risk
 
-- GitHub Pages must still be opened from the user's iPhone or another network that can reach `github.io` to complete the literal live-site manual login/installability check.
+- GitHub Pages must still be opened from the user's iPhone or another network that can reach `github.io` to complete the authenticated live-site manual login/installability check. The unauthenticated deployed Pages auth screen and PWA manifest now pass from GitHub-hosted infrastructure.
 - The first digest is real but ranking quality is still cold-start and contains some low-signal items; training signals now exist and should improve later runs.
 - Out-of-band health alerting is not active until `ALERT_WEBHOOK_URL` is supplied.
 - `test:db` should be rerun on a machine with Docker available before treating local migration validation as freshly re-confirmed after these patches.

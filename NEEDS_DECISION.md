@@ -21,7 +21,8 @@ Status: resolved.
 
 - Repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set.
 - GitHub Pages is enabled with workflow deployment.
-- Deploy Pages workflow runs `28708434747`, `28709775117`, and `28709839529` passed with `VITE_USE_DEMO_DATA=false`.
+- Deploy Pages workflow runs `28708434747`, `28709775117`, `28709839529`, and `28709974463` passed with `VITE_USE_DEMO_DATA=false`.
+- Live Pages Smoke workflow run `28710032056` passed from GitHub-hosted infrastructure at 402 x 874.
 
 ### Yandex scoped service-account role binding
 
@@ -44,19 +45,20 @@ Status: resolved.
 
 ## Still Open
 
-### GitHub Pages reachability from this Codex environment
+### Authenticated GitHub Pages smoke test from this Codex environment
 
 Status: open verification blocker, not a product decision.
 
 What happened:
 
 - GitHub Pages deployment passed and GitHub API reports the site active at `https://adamaitiss.github.io/digest/`.
+- Live Pages Smoke run `28710032056` reached the deployed Pages URL from GitHub-hosted infrastructure, rendered the auth screen at iPhone width, verified the PWA manifest, and found no relevant console errors.
 - This Codex environment cannot connect to `github.io` / GitHub Pages IPs. `curl -4`, `curl -6`, WebKit, Chromium, and the in-app browser timed out.
 - `github.com` and GitHub API are reachable from the same environment, so this appears specific to the GitHub Pages network path.
 
 Impact:
 
-- The literal live-site browser smoke test on `https://adamaitiss.github.io/digest/` could not be completed from this machine.
+- The authenticated live-site browser smoke test on `https://adamaitiss.github.io/digest/` could not be completed from this machine.
 - The same app was smoke-tested locally against the real Supabase project with a magic-link-verified session.
 
 Next action:
