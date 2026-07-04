@@ -151,6 +151,7 @@ export interface RepositorySnapshot {
 export interface AppRepository {
   mode: "demo" | "supabase";
   getCurrentUser(): Promise<SessionUser | null>;
+  onAuthStateChange?(callback: (user: SessionUser | null) => void): () => void;
   sendMagicLink(email: string): Promise<void>;
   signOut(): Promise<void>;
   loadSnapshot(): Promise<RepositorySnapshot>;
@@ -161,4 +162,3 @@ export interface AppRepository {
   unsaveItem(savedItemId: string): Promise<void>;
   recordDigestFeedback(item: DigestItem, feedback: DigestFeedback): Promise<void>;
 }
-

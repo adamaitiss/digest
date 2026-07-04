@@ -46,6 +46,9 @@ export function createDemoRepository(): AppRepository {
     async getCurrentUser(): Promise<SessionUser> {
       return { id: "demo-user", email: "demo@example.com" };
     },
+    onAuthStateChange(): () => void {
+      return () => undefined;
+    },
     async sendMagicLink(): Promise<void> {
       return undefined;
     },
@@ -126,4 +129,3 @@ export function createDemoRepository(): AppRepository {
     }
   };
 }
-

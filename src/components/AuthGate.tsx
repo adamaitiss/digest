@@ -18,6 +18,14 @@ export function AuthGate({ repository, children }: AuthGateProps) {
 
   useEffect(() => {
     let active = true;
+    const unsubscribe = repository.onAuthStateChange?.((nextUser) => {
+      if (active) {
+        setUser(nextUser);
+        setLoading(false);
+        setError(null);
+      }
+    });
+
     repository
       .getCurrentUser()
       .then((currentUser) => {
@@ -37,6 +45,7 @@ export function AuthGate({ repository, children }: AuthGateProps) {
       });
     return () => {
       active = false;
+      unsubscribe?.();
     };
   }, [repository]);
 
@@ -123,4 +132,3 @@ export function AuthGate({ repository, children }: AuthGateProps) {
     </main>
   );
 }
-

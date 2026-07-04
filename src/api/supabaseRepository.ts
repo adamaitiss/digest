@@ -95,6 +95,12 @@ export function createSupabaseRepository(client: SupabaseClient = createBrowserS
       }
       return { id: data.user.id, email: data.user.email ?? "" };
     },
+    onAuthStateChange(callback: (user: SessionUser | null) => void): () => void {
+      const { data } = client.auth.onAuthStateChange((_event, session) => {
+        callback(session?.user ? { id: session.user.id, email: session.user.email ?? "" } : null);
+      });
+      return () => data.subscription.unsubscribe();
+    },
     async sendMagicLink(email: string): Promise<void> {
       const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
       const { error } = await client.auth.signInWithOtp({
@@ -240,4 +246,3 @@ export function createSupabaseRepository(client: SupabaseClient = createBrowserS
     }
   };
 }
-
