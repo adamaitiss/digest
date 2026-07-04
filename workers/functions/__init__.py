@@ -1,0 +1,2 @@
+"""Yandex Cloud Function entrypoints."""
+
