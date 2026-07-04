@@ -6,6 +6,7 @@
 - Start local PWA: `npm run dev`
 - Typecheck: `npm run lint`
 - Unit tests: `npm run test:unit`
+- Supabase migration/RPC validation: `npm run test:db`
 - Production build: `npm run build`
 - Browser e2e: `npm run test:e2e`
 - Python worker syntax check: `PYTHONPATH=workers python3 -m compileall -q workers`

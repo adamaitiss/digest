@@ -10,6 +10,7 @@
     "lint": "tsc -b --pretty false",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:db": "./scripts/validate_supabase_migrations.sh",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
   },

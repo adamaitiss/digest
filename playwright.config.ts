@@ -9,7 +9,7 @@ export default defineConfig({
     trace: "on-first-retry"
   },
   webServer: {
-    command: "npm run preview -- --port 4173",
+    command: "VITE_USE_DEMO_DATA=true VITE_BASE_PATH=/digest/ npm run build && npm run preview -- --port 4173",
     url: "http://127.0.0.1:4173/digest/",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000
@@ -25,4 +25,3 @@ export default defineConfig({
     }
   ]
 });
-

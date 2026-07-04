@@ -32,6 +32,7 @@ Without Supabase environment variables, the app uses demo data so the UI and PWA
 ```bash
 npm run lint
 npm run test:unit
+npm run test:db
 npm run build
 npm run test:e2e
 PYTHONPATH=workers python3 -m compileall -q workers

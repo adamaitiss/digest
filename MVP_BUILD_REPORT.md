@@ -21,6 +21,7 @@ Date: 2026-07-04
 - `npm run build` passed.
 - `npm run test:e2e` passed: 4 browser tests across iPhone-sized and desktop projects.
 - `PYTHONPATH=workers python3 -m compileall -q workers` passed.
+- `./scripts/validate_supabase_migrations.sh` passed: applies both migrations in a disposable pgvector Postgres, seeds 49 sources, and exercises profile/training/saved/digest RPCs plus app views under a mocked authenticated user.
 - A real RSS fetch from the validated seed registry succeeded.
 - GitHub CI passed on `main` after push.
 - GitHub Pages deploy workflow reached the intentional Supabase-secret preflight and stopped, preventing a demo-backed production deployment.
