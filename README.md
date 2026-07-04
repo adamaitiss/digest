@@ -14,6 +14,10 @@ Implemented locally:
 
 Live deployment is blocked on Supabase credentials/project access. See `NEEDS_DECISION.md`.
 
+Repository: https://github.com/adamaitiss/digest
+
+CI is passing on `main`. Pages deployment is intentionally blocked until real Supabase public config is available, so the production app is not published with demo data.
+
 ## Local Run
 
 ```bash
@@ -66,4 +70,3 @@ Regenerate the Supabase seed migration after registry edits:
 ```bash
 python3 scripts/generate_source_seed.py
 ```
-

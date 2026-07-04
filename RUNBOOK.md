@@ -3,10 +3,14 @@
 ## Deploy URLs
 
 Pending live setup:
-- GitHub repository: pending
+- GitHub repository: https://github.com/adamaitiss/digest
 - GitHub Pages URL: pending
 - Supabase project URL: blocked on credentials
 - Yandex Cloud Functions: blocked on Supabase outputs
+
+Current workflow status:
+- CI passes on `main`.
+- Pages deployment is intentionally blocked at the Supabase-secret preflight until `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured.
 
 ## Supabase Setup
 
@@ -88,4 +92,3 @@ After deployment:
 8. Open Saved and unsave/resave an item.
 9. Open Profile and Source health.
 10. Confirm `job_run` and `ai_cost_log` rows exist for the live pipeline cycle.
-

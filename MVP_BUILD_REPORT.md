@@ -12,6 +12,7 @@ Date: 2026-07-04
 - Unit tests for scoring, clustering, and grounding.
 - Playwright e2e tests for the core UI flow and PWA manifest.
 - GitHub Actions CI and Pages deployment workflows without `schedule:` triggers.
+- Public GitHub repository: https://github.com/adamaitiss/digest
 
 ## Verification Completed Locally
 
@@ -21,6 +22,8 @@ Date: 2026-07-04
 - `npm run test:e2e` passed: 4 browser tests across iPhone-sized and desktop projects.
 - `PYTHONPATH=workers python3 -m compileall -q workers` passed.
 - A real RSS fetch from the validated seed registry succeeded.
+- GitHub CI passed on `main` after push.
+- GitHub Pages deploy workflow reached the intentional Supabase-secret preflight and stopped, preventing a demo-backed production deployment.
 
 ## Not Completed Live
 
