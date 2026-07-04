@@ -12,8 +12,9 @@ Current workflow status:
 
 - GitHub Pages is enabled with `build_type=workflow`.
 - Repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured.
-- Latest Deploy Pages workflow run `28709974463` passed on `main`.
-- Live Pages Smoke workflow run `28710032056` passed against `https://adamaitiss.github.io/digest/` at 402 x 874.
+- Latest CI workflow run `28710792185` passed on `main` for commit `4409a1a`.
+- Latest Deploy Pages workflow run `28710792194` passed on rerun attempt 2 for commit `4409a1a`.
+- Live Pages Smoke workflow run `28710933294` passed against `https://adamaitiss.github.io/digest/` at 402 x 874, including authenticated Train, Digest, feedback, save, and unsave actions.
 - Yandex Timer triggers are active for all five pipeline jobs.
 - Scheduled pipeline work belongs in Yandex Timer triggers; GitHub Actions workflows must not use `schedule:`.
 
@@ -112,6 +113,8 @@ gh workflow run live-pages-smoke.yml --repo adamaitiss/digest --ref main
 
 This checks that GitHub Pages renders the auth screen at iPhone width, the primary magic-link control is visible, the PWA manifest is reachable, and there are no relevant console errors.
 
+To repeat the authenticated smoke, create a one-time Supabase magic link for a user that already has today's ready digest, store only that short-lived link as repository secret `LIVE_SMOKE_MAGIC_LINK`, run the same workflow, then delete the secret immediately. Do not store the Supabase service-role key in GitHub.
+
 Expected end-to-end flow:
 
 1. Open `https://adamaitiss.github.io/digest/` on an iPhone-width viewport.
@@ -124,4 +127,4 @@ Expected end-to-end flow:
 8. Unsave the saved item.
 9. Confirm `job_run`, `user_signal`, `saved_item`, and `ai_cost_log` rows reflect the actions.
 
-2026-07-04 note: the Codex environment could not connect to `github.io` / GitHub Pages IPs, so the browser portion was smoke-tested against `http://127.0.0.1:5173/digest/` with the same real Supabase project and a magic-link-verified session. The GitHub Pages deployment itself passed and GitHub API reports the Pages site active.
+2026-07-04 note: the Codex environment could not connect directly to `github.io` / GitHub Pages IPs, but GitHub-hosted Chromium completed the authenticated live smoke against the deployed Pages URL in run `28710933294`.

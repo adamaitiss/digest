@@ -21,8 +21,9 @@ Implemented and verified:
 - Live pipeline run on 2026-07-04 created 871 article rows, 583 clusters, and a 15-item digest.
 - GitHub Actions CI and Pages deployment workflows have no `schedule:` triggers.
 - Pages deploy workflow passes with real Supabase public config.
+- Authenticated live Pages smoke passed from GitHub-hosted Chromium at iPhone width, including magic-link login, Train, card summary, Save, Digest, Useful feedback, Saved, and Unsave.
 
-Known current gap: this Codex environment cannot connect to `github.io` / GitHub Pages IPs, although GitHub API reports Pages enabled and the deploy workflow passed. Live UI interaction was therefore smoke-tested against the same Supabase-backed app on localhost; see `MVP_BUILD_REPORT.md`.
+Note: this Codex environment still cannot connect directly to `github.io` / GitHub Pages IPs, so deployed UI checks from this machine should use the GitHub-hosted smoke workflow or another network.
 
 ## Local Run
 
