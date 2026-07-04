@@ -17,6 +17,8 @@ jobs:
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       - name: Smoke deployed Pages app
+        env:
+          LIVE_SMOKE_MAGIC_LINK: ${{ secrets.LIVE_SMOKE_MAGIC_LINK }}
         run: |
           node <<'NODE'
           const { chromium } = require("@playwright/test");
@@ -59,6 +61,30 @@ jobs:
             const relevantLogs = logs.filter((line) => !line.includes("favicon"));
             if (relevantLogs.length) {
               throw new Error(`Console errors/warnings: ${relevantLogs.join(" | ")}`);
+            }
+
+            if (process.env.LIVE_SMOKE_MAGIC_LINK) {
+              await page.goto(process.env.LIVE_SMOKE_MAGIC_LINK, { waitUntil: "domcontentloaded", timeout: 60000 });
+              await page.getByRole("heading", { name: "Train" }).waitFor({ timeout: 45000 });
+              await page.locator('article[aria-label="Training card"]').waitFor({ timeout: 30000 });
+              await page.locator('article[aria-label="Training card"] button').first().click();
+              await page.getByRole("heading", { name: "Summary" }).waitFor({ timeout: 30000 });
+              await page.getByRole("button", { name: "Save For later" }).click();
+              await page.waitForTimeout(1500);
+
+              await page.getByRole("button", { name: "Digest" }).click();
+              await page.getByRole("heading", { name: "Digest" }).waitFor({ timeout: 30000 });
+              await page.getByText("15 items across").waitFor({ timeout: 30000 });
+              await page.locator("article").first().locator("button").first().click();
+              await page.getByText("Why it matters").first().waitFor({ timeout: 30000 });
+              await page.getByRole("button", { name: "Useful" }).first().click();
+              await page.waitForTimeout(1500);
+
+              await page.getByRole("button", { name: "Saved" }).click();
+              await page.getByRole("heading", { name: "Saved" }).waitFor({ timeout: 30000 });
+              await page.getByRole("button", { name: "Unsave" }).first().click();
+              await page.waitForTimeout(1500);
+              console.log("Authenticated live Pages smoke passed.");
             }
 
             await browser.close();
