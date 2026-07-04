@@ -21,7 +21,7 @@ Date: 2026-07-04
 - Authenticated RPCs/views verified: `get_or_create_profile`, `get_training_session_state`, `source_health_status`, `training_cards_today`, `digest_today`, and `saved_items_view`.
 - GitHub repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set.
 - GitHub Pages was enabled for workflow deployment.
-- Deploy Pages workflow runs `28708434747` and `28709775117` passed and built with `VITE_USE_DEMO_DATA=false`.
+- Deploy Pages workflow runs `28708434747`, `28709775117`, and `28709839529` passed and built with `VITE_USE_DEMO_DATA=false`.
 - Yandex service account `digest-pipeline` has `functions.functionInvoker`, `ai.models.user`, and `ai.languageModels.user`.
 - Yandex functions and timers are deployed under `digest-pipeline`:
   - `digest-ingest`
@@ -78,6 +78,8 @@ Screenshots from the local real-backend smoke test:
 - `npm run test:db` could not run in this environment because Docker is not available at `/var/run/docker.sock`.
 - GitHub Actions CI run `28709775094` passed on `main`, including Supabase migration validation and e2e.
 - GitHub Pages deploy run `28709775117` passed on `main`.
+- GitHub Actions CI run `28709839518` passed on `main` for commit `722326b`.
+- GitHub Pages deploy run `28709839529` passed on `main` for commit `722326b`.
 
 ## Optimization / Cleanup Pass
 

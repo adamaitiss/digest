@@ -1,0 +1,70 @@
+name: Live Pages Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Smoke deployed Pages app
+        run: |
+          node <<'NODE'
+          const { chromium } = require("@playwright/test");
+
+          (async () => {
+            const url = "https://adamaitiss.github.io/digest/";
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext({
+              viewport: { width: 402, height: 874 },
+              isMobile: true,
+              hasTouch: true,
+              deviceScaleFactor: 3
+            });
+            const page = await context.newPage();
+            const logs = [];
+            page.on("console", (message) => {
+              if (["error", "warning"].includes(message.type())) {
+                logs.push(`${message.type()}: ${message.text()}`);
+              }
+            });
+            page.on("pageerror", (error) => logs.push(`pageerror: ${error.message}`));
+
+            await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+            await page.getByRole("heading", { name: "Personal News Swipe Digest" }).waitFor({ timeout: 30000 });
+            await page.getByRole("button", { name: "Send magic link" }).waitFor({ timeout: 30000 });
+
+            const manifestHref = await page.evaluate(() => document.querySelector('link[rel="manifest"]')?.href);
+            if (!manifestHref) {
+              throw new Error("Manifest link is missing.");
+            }
+            const manifestResponse = await page.request.get(manifestHref);
+            if (!manifestResponse.ok()) {
+              throw new Error(`Manifest request failed: ${manifestResponse.status()}`);
+            }
+            const manifest = await manifestResponse.json();
+            if (manifest.display !== "standalone" || manifest.start_url !== "/digest/") {
+              throw new Error(`Unexpected manifest: ${JSON.stringify(manifest)}`);
+            }
+
+            const relevantLogs = logs.filter((line) => !line.includes("favicon"));
+            if (relevantLogs.length) {
+              throw new Error(`Console errors/warnings: ${relevantLogs.join(" | ")}`);
+            }
+
+            await browser.close();
+            console.log("Live Pages smoke passed at iPhone-width viewport.");
+          })().catch(async (error) => {
+            console.error(error.stack || error.message);
+            process.exit(1);
+          });
+          NODE

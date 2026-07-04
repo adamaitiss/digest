@@ -21,7 +21,7 @@ Status: resolved.
 
 - Repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set.
 - GitHub Pages is enabled with workflow deployment.
-- Deploy Pages workflow run `28708434747` passed with `VITE_USE_DEMO_DATA=false`.
+- Deploy Pages workflow runs `28708434747`, `28709775117`, and `28709839529` passed with `VITE_USE_DEMO_DATA=false`.
 
 ### Yandex scoped service-account role binding
 
