@@ -24,22 +24,59 @@ jobs:
           const { chromium } = require("@playwright/test");
 
           (async () => {
-            const url = "https://adamaitiss.github.io/digest/";
-            const browser = await chromium.launch({ headless: true });
-            const context = await browser.newContext({
+            const baseUrl = "https://adamaitiss.github.io/digest/";
+            const url = `${baseUrl}?smoke=${Date.now()}`;
+            const device = {
               viewport: { width: 402, height: 874 },
               isMobile: true,
               hasTouch: true,
               deviceScaleFactor: 3
-            });
+            };
+
+            function redactedUrl(rawUrl) {
+              const parsed = new URL(rawUrl);
+              for (const key of parsed.searchParams.keys()) {
+                if (/code|token|secret|otp|sb/i.test(key)) {
+                  parsed.searchParams.set(key, "<redacted>");
+                }
+              }
+              if (parsed.hash) {
+                parsed.hash = "#<redacted>";
+              }
+              return parsed.toString();
+            }
+
+            function attachLogCapture(page, logs) {
+              page.on("console", (message) => {
+                if (["error", "warning"].includes(message.type())) {
+                  logs.push(`${message.type()}: ${message.text()}`);
+                }
+              });
+              page.on("pageerror", (error) => logs.push(`pageerror: ${error.message}`));
+            }
+
+            async function dumpPageState(page, logs, label) {
+              const [headings, buttons, bodyText] = await Promise.all([
+                page.getByRole("heading").allTextContents().catch(() => []),
+                page.getByRole("button").allTextContents().catch(() => []),
+                page.locator("body").innerText({ timeout: 1000 }).catch(() => "")
+              ]);
+              console.error(
+                `${label} diagnostics: ${JSON.stringify({
+                  url: redactedUrl(page.url()),
+                  headings,
+                  buttons,
+                  bodyText: bodyText.replace(/\s+/g, " ").slice(0, 800),
+                  logs: logs.slice(-10)
+                })}`
+              );
+            }
+
+            const browser = await chromium.launch({ headless: true });
+            let context = await browser.newContext(device);
             const page = await context.newPage();
             const logs = [];
-            page.on("console", (message) => {
-              if (["error", "warning"].includes(message.type())) {
-                logs.push(`${message.type()}: ${message.text()}`);
-              }
-            });
-            page.on("pageerror", (error) => logs.push(`pageerror: ${error.message}`));
+            attachLogCapture(page, logs);
 
             await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
             await page.getByRole("heading", { name: "Personal News Swipe Digest" }).waitFor({ timeout: 30000 });
@@ -64,27 +101,40 @@ jobs:
             }
 
             if (process.env.LIVE_SMOKE_MAGIC_LINK) {
-              await page.goto(process.env.LIVE_SMOKE_MAGIC_LINK, { waitUntil: "domcontentloaded", timeout: 60000 });
-              await page.getByRole("heading", { name: "Train" }).waitFor({ timeout: 45000 });
-              await page.locator('article[aria-label="Training card"]').waitFor({ timeout: 30000 });
-              await page.locator('article[aria-label="Training card"] button').first().click();
-              await page.getByRole("heading", { name: "Summary" }).waitFor({ timeout: 30000 });
-              await page.getByRole("button", { name: "Save For later" }).click();
-              await page.waitForTimeout(1500);
+              await context.close();
+              context = await browser.newContext(device);
+              const authPage = await context.newPage();
+              const authLogs = [];
+              attachLogCapture(authPage, authLogs);
+              try {
+                await authPage.goto(process.env.LIVE_SMOKE_MAGIC_LINK, {
+                  waitUntil: "domcontentloaded",
+                  timeout: 60000
+                });
+                await authPage.getByRole("heading", { name: "Train" }).waitFor({ timeout: 45000 });
+                await authPage.locator('article[aria-label="Training card"]').waitFor({ timeout: 30000 });
+                await authPage.locator('article[aria-label="Training card"] button').first().click();
+                await authPage.getByRole("heading", { name: "Summary" }).waitFor({ timeout: 30000 });
+                await authPage.getByRole("button", { name: "Save For later" }).click();
+                await authPage.waitForTimeout(1500);
 
-              await page.getByRole("button", { name: "Digest" }).click();
-              await page.getByRole("heading", { name: "Digest" }).waitFor({ timeout: 30000 });
-              await page.getByText("15 items across").waitFor({ timeout: 30000 });
-              await page.locator("article").first().locator("button").first().click();
-              await page.getByText("Why it matters").first().waitFor({ timeout: 30000 });
-              await page.getByRole("button", { name: "Useful" }).first().click();
-              await page.waitForTimeout(1500);
+                await authPage.getByRole("button", { name: "Digest" }).click();
+                await authPage.getByRole("heading", { name: "Digest" }).waitFor({ timeout: 30000 });
+                await authPage.getByText("15 items across").waitFor({ timeout: 30000 });
+                await authPage.locator("article").first().locator("button").first().click();
+                await authPage.getByText("Why it matters").first().waitFor({ timeout: 30000 });
+                await authPage.getByRole("button", { name: "Useful" }).first().click();
+                await authPage.waitForTimeout(1500);
 
-              await page.getByRole("button", { name: "Saved" }).click();
-              await page.getByRole("heading", { name: "Saved" }).waitFor({ timeout: 30000 });
-              await page.getByRole("button", { name: "Unsave" }).first().click();
-              await page.waitForTimeout(1500);
-              console.log("Authenticated live Pages smoke passed.");
+                await authPage.getByRole("button", { name: "Saved" }).click();
+                await authPage.getByRole("heading", { name: "Saved" }).waitFor({ timeout: 30000 });
+                await authPage.getByRole("button", { name: "Unsave" }).first().click();
+                await authPage.waitForTimeout(1500);
+                console.log("Authenticated live Pages smoke passed.");
+              } catch (error) {
+                await dumpPageState(authPage, authLogs, "Authenticated smoke failure");
+                throw error;
+              }
             }
 
             await browser.close();
