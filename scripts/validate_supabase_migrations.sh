@@ -252,7 +252,7 @@ declare
   profile public.user_profile;
   export jsonb;
 begin
-  select public.reset_learned_preferences() into profile;
+  select * into profile from public.reset_learned_preferences();
   if profile.interest_description <> 'Macro policy and AI regulation' then
     raise exception 'reset should preserve interest description';
   end if;
