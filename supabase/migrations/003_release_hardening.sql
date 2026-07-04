@@ -595,5 +595,6 @@ grant execute on function public.is_authorized_user() to authenticated;
 grant execute on function public.require_authorized_user() to authenticated;
 
 grant select on public.authorized_auth_email to authenticated;
+grant select on public.user_profile, public.training_session, public.user_signal, public.digest, public.digest_item, public.saved_item to authenticated;
 grant execute on function public.reset_learned_preferences() to authenticated;
 grant execute on function public.export_user_data() to authenticated;
