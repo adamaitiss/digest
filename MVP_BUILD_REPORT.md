@@ -30,6 +30,7 @@ Not yet completed:
 - Live Supabase project provisioning and migration application.
 - Magic-link auth redirect configuration.
 - GitHub Pages deployment connected to real Supabase anon config.
+- The deploy workflow is intentionally guarded so Pages will not publish a demo-backed production app while Supabase secrets are missing.
 - Yandex Cloud Function deployment with Supabase service-role environment variables.
 - Real live pipeline cycle producing a 10-15 item digest in Supabase.
 - iPhone live login/training/digest smoke test.
@@ -43,4 +44,3 @@ Because live credentials are blocked, the deployed/live acceptance criteria rema
 ## AI Cost
 
 Estimated design target remains the stack decision estimate of about `$0.6-0.75/day`. Real measured cost is not available yet because the live Yandex/Supabase pipeline has not run. The worker writes intended usage rows to `ai_cost_log`.
-

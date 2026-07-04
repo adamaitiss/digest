@@ -16,6 +16,7 @@ What is missing:
 Why it blocks:
 - I cannot provision the Supabase project, apply `supabase/migrations/*.sql`, configure magic-link Site URL/redirects, obtain the public anon key for the PWA build, or set the service-role key for Yandex Cloud Functions without authenticated Supabase project access.
 - Completion criteria 2, 6, 7, and 8 require live Supabase verification, not local/demo data.
+- The GitHub Pages workflow now intentionally fails unless `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` repository secrets are set, so a demo-backed production PWA is not accidentally published.
 
 Next action needed:
 - Provide a Supabase access token/project ref/service-role key through a secure local mechanism, or open an authenticated Supabase dashboard session in the browser context Codex can control.
@@ -33,4 +34,3 @@ What is still missing or downstream:
 
 Why it blocks:
 - Completion criteria 3 and 6 require deployed Yandex Cloud Functions and at least one real live pipeline cycle writing to Supabase.
-

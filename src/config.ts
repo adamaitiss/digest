@@ -7,9 +7,7 @@ export const appConfig = {
   useDemoData:
     env.VITE_USE_DEMO_DATA === "true" ||
     env.MODE === "test" ||
-    !env.VITE_SUPABASE_URL ||
-    !env.VITE_SUPABASE_ANON_KEY
+    (env.DEV && (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY))
 };
 
 export const hasSupabaseConfig = Boolean(appConfig.supabaseUrl && appConfig.supabaseAnonKey);
-
