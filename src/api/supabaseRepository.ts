@@ -85,10 +85,45 @@ function mapSaved(row: Record<string, unknown>): SavedItem {
   };
 }
 
+function createUrlSessionHydrator(client: SupabaseClient): () => Promise<void> {
+  let hydrationPromise: Promise<void> | null = null;
+
+  return () => {
+    if (!hydrationPromise) {
+      hydrationPromise = (async () => {
+        if (typeof window === "undefined" || !window.location.hash) {
+          return;
+        }
+
+        const hash = new URLSearchParams(window.location.hash.slice(1));
+        const accessToken = hash.get("access_token");
+        const refreshToken = hash.get("refresh_token");
+        if (!accessToken || !refreshToken) {
+          return;
+        }
+
+        const { error } = await client.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+        if (error) {
+          throw error;
+        }
+
+        window.history.replaceState(null, document.title, `${window.location.pathname}${window.location.search}`);
+      })();
+    }
+    return hydrationPromise;
+  };
+}
+
 export function createSupabaseRepository(client: SupabaseClient = createBrowserSupabaseClient()): AppRepository {
+  const hydrateUrlSession = createUrlSessionHydrator(client);
+
   return {
     mode: "supabase",
     async getCurrentUser(): Promise<SessionUser | null> {
+      await hydrateUrlSession();
       const { data, error } = await client.auth.getUser();
       if (error || !data.user) {
         return null;
