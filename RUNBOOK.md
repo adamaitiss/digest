@@ -2,114 +2,117 @@
 
 ## Deploy URLs
 
-Pending live setup:
 - GitHub repository: https://github.com/adamaitiss/digest
-- GitHub Pages URL: pending
-- Supabase project URL: blocked on credentials
-- Yandex Cloud Functions: blocked on Supabase outputs
+- GitHub Pages URL: https://adamaitiss.github.io/digest/
+- Supabase project: `kypzyekydodticqddwex`
+- Yandex folder: `b1gj5q3o1k1v91qo20td`
+- Yandex service account: `digest-pipeline` / `ajeafj047mmd4vpvhfqc`
 
 Current workflow status:
-- CI passes on `main`.
-- Pages deployment is intentionally blocked at the Supabase-secret preflight until `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured.
+
+- GitHub Pages is enabled with `build_type=workflow`.
+- Repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured.
+- Deploy Pages workflow run `28708434747` passed on `main`.
+- Yandex Timer triggers are active for all five pipeline jobs.
+- Scheduled pipeline work belongs in Yandex Timer triggers; GitHub Actions workflows must not use `schedule:`.
 
 ## Supabase Setup
 
-1. Create or select the Supabase project.
-2. Apply migrations in order:
+Already complete:
 
-```bash
-supabase db push
-```
+1. Project `kypzyekydodticqddwex` exists.
+2. `supabase/migrations/001_initial_schema.sql` and `002_seed_source_registry.sql` are applied.
+3. Auth Site URL is set to `https://adamaitiss.github.io/digest/`.
+4. Local `.env` contains real public and service-role Supabase values.
+5. Auth/RPC/view behavior was verified with an authenticated magic-link token.
 
-or paste/apply:
-- `supabase/migrations/001_initial_schema.sql`
-- `supabase/migrations/002_seed_source_registry.sql`
+Live counts after the 2026-07-04 pipeline run:
 
-3. Configure Auth:
-- Site URL: the GitHub Pages URL.
-- Redirect URLs: the GitHub Pages URL and local dev URL if needed.
-- Magic-link email auth enabled.
-
-4. Add GitHub Actions secrets:
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-
-5. Add Yandex Function environment variables:
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-
-6. Run live setup preflight:
-
-```bash
-VITE_SUPABASE_URL=... \
-VITE_SUPABASE_ANON_KEY=... \
-SUPABASE_URL=... \
-SUPABASE_SERVICE_ROLE_KEY=... \
-YANDEX_FOLDER_ID=... \
-YANDEX_SERVICE_ACCOUNT_ID=... \
-./scripts/preflight_live_setup.sh
-```
-
-If the scoped Yandex service account is not ready, run:
-
-```bash
-YANDEX_FOLDER_ID=... ./scripts/ensure_yandex_service_account.sh
-```
-
-The target service account should have `functions.functionInvoker` and `ai.models.user`.
+- `source`: 49
+- `article`: 871
+- `event_cluster`: 583
+- `digest`: 1
+- `digest_item`: 15
+- `ai_cost_log`: 202
 
 ## Yandex Functions
 
 Deploy from a local machine with Yandex CLI access:
 
 ```bash
-YANDEX_FOLDER_ID=... \
-YANDEX_SERVICE_ACCOUNT_ID=... \
-SUPABASE_URL=... \
-SUPABASE_SERVICE_ROLE_KEY=... \
+set -a
+source .env
+set +a
+./scripts/ensure_yandex_service_account.sh
+./scripts/preflight_live_setup.sh
 ./scripts/deploy_yandex_functions.sh
 ```
 
-The deployed functions use the attached Yandex service account IAM token for AI Studio calls. `YANDEX_API_KEY` is optional for debugging or fallback, not the default credential path.
+The scoped service account should have:
+
+- `functions.functionInvoker`
+- `ai.models.user`
+- `ai.languageModels.user`
+
+Deployed function names:
+
+- `digest-ingest`
+- `digest-enrich`
+- `digest-cluster-rank`
+- `digest-generate-digest`
+- `digest-health-check`
 
 Schedules:
+
 - `ingest`: every 4 hours.
 - `enrich`: every 4 hours after ingestion.
 - `cluster_rank`: every 4 hours after enrichment.
-- `generate_digest`: daily.
-- `health_check`: daily.
+- `generate_digest`: daily at 05:00 UTC.
+- `health_check`: daily at 06:30 UTC.
 
-## Manual Digest Regeneration
+## Manual Pipeline Run
 
-Until a protected HTTP invocation wrapper is added, manually invoke the deployed Yandex function from the Yandex CLI:
+Invoke by function ID:
 
 ```bash
-yc serverless function invoke digest-generate_digest
+for name in digest-ingest digest-enrich digest-cluster-rank digest-generate-digest digest-health-check; do
+  id="$(yc serverless function get --name "$name" --folder-id "$YANDEX_FOLDER_ID" --format json \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
+  yc serverless function invoke "$id" -d '{}'
+done
 ```
+
+`enrich` is intentionally slower than the other jobs because Yandex Classifier is limited to 1 request/second and metadata generation uses asynchronous YandexGPT operations.
 
 ## Credential Rotation
 
 Supabase:
-- Rotate anon key only after updating GitHub Pages secrets and rebuilding.
-- Rotate service-role key only after updating all Yandex Function environment variables.
+
+- Rotate anon key only after updating GitHub Actions secrets and rebuilding Pages.
+- Rotate service-role key only after updating Yandex Function environment variables through a redeploy.
 
 Yandex:
-- Rotate the AI Studio API key, then redeploy function versions with the new `YANDEX_API_KEY`.
-- Rotate service-account keys from Yandex Cloud IAM and remove old keys after confirming timers still run.
+
+- The default credential path is the attached Cloud Function service account IAM token.
+- `YANDEX_API_KEY` is optional for debugging/fallback only.
+- If the service account roles change, rerun `scripts/ensure_yandex_service_account.sh` and `scripts/preflight_live_setup.sh`.
 
 GitHub:
-- Rotate repository secrets in Settings -> Secrets and variables -> Actions.
+
+- Rotate repository secrets in Settings -> Secrets and variables -> Actions, or with `gh secret set`.
 
 ## Live Smoke Test
 
-After deployment:
-1. Open the GitHub Pages URL on an iPhone-width viewport.
-2. Send a magic link and log in.
-3. Confirm the Train screen shows real cards from the last 3 days.
-4. React to cards with Like, Reject, Save, and Undo.
-5. Open card detail and verify prepared summary/source/confidence text.
+Expected end-to-end flow:
+
+1. Open `https://adamaitiss.github.io/digest/` on an iPhone-width viewport.
+2. Send/open a magic link and log in.
+3. Confirm Train shows real cards from the last 3 days.
+4. Open a card detail and verify prepared summary/source/confidence text.
+5. Save a card, then confirm it appears in Saved.
 6. Open Digest and verify 10-15 grouped real items.
-7. Mark a digest item Useful and Duplicate.
-8. Open Saved and unsave/resave an item.
-9. Open Profile and Source health.
-10. Confirm `job_run` and `ai_cost_log` rows exist for the live pipeline cycle.
+7. Mark a digest item Useful.
+8. Unsave the saved item.
+9. Confirm `job_run`, `user_signal`, `saved_item`, and `ai_cost_log` rows reflect the actions.
+
+2026-07-04 note: the Codex environment could not connect to `github.io` / GitHub Pages IPs, so the browser portion was smoke-tested against `http://127.0.0.1:5173/digest/` with the same real Supabase project and a magic-link-verified session. The GitHub Pages deployment itself passed and GitHub API reports the Pages site active.

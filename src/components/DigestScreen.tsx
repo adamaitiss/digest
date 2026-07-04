@@ -1,4 +1,4 @@
-import { Bookmark, ChevronDown, ExternalLink, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
 import { formatRelativeTime } from "../lib/date";
 import type { DigestFeedback, DigestItem, RepositorySnapshot } from "../types";
@@ -159,16 +159,6 @@ export function DigestScreen({ snapshot, busy, onFeedback }: DigestScreenProps) 
         ) : null}
       </section>
     </main>
-  );
-}
-
-export function DigestQuickActions() {
-  return (
-    <div className="flex items-center gap-2 text-graphite">
-      <ThumbsUp aria-hidden="true" size={17} className="text-positive" />
-      <ThumbsDown aria-hidden="true" size={17} className="text-negative" />
-      <Bookmark aria-hidden="true" size={17} />
-    </div>
   );
 }
 

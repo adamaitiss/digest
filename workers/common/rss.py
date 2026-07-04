@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import html
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from typing import Any
 from urllib.parse import urldefrag
@@ -14,6 +14,8 @@ from dateutil import parser as date_parser
 
 
 USER_AGENT = "PersonalNewsSwipeDigest/0.1 (+https://github.com/adamaitiss/digest)"
+MAX_ITEMS_PER_SOURCE = 25
+ACTIVE_HORIZON = timedelta(days=3)
 
 
 def fetch_feed(source: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -36,12 +38,13 @@ def fetch_feed(source: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, 
     items = [entry_to_article(source, entry) for entry in parsed.entries]
     items = [item for item in items if item["title"] and item["canonical_url"]]
     latest = max((item["published_at"] for item in items if item.get("published_at")), default=None)
-    return items, {
-        "error_status": None if items else "no_parseable_items",
+    returned_items = select_recent_items(items)
+    return returned_items, {
+        "error_status": None if returned_items else "no_parseable_items",
         "http_status": response.status_code,
         "item_count": len(items),
         "latest_published_at": latest,
-        "last_successful_fetch": datetime.now(UTC).isoformat().replace("+00:00", "Z") if items else None,
+        "last_successful_fetch": datetime.now(UTC).isoformat().replace("+00:00", "Z") if returned_items else None,
     }
 
 
@@ -97,3 +100,24 @@ def parse_date(entry: Any) -> str | None:
             except Exception:
                 continue
     return None
+
+
+def select_recent_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    cutoff = datetime.now(UTC) - ACTIVE_HORIZON
+
+    def published_datetime(item: dict[str, Any]) -> datetime | None:
+        value = item.get("published_at")
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    recent = [item for item in items if (published_datetime(item) or datetime.now(UTC)) >= cutoff]
+    candidates = recent or items
+    return sorted(
+        candidates,
+        key=lambda item: published_datetime(item) or datetime.min.replace(tzinfo=UTC),
+        reverse=True,
+    )[:MAX_ITEMS_PER_SOURCE]

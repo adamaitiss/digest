@@ -21,4 +21,8 @@ yc resource-manager folder add-access-binding "$FOLDER_ID" \
   --role ai.models.user \
   --service-account-id "$service_account_id" >/dev/null
 
+yc resource-manager folder add-access-binding "$FOLDER_ID" \
+  --role ai.languageModels.user \
+  --service-account-id "$service_account_id" >/dev/null
+
 echo "YANDEX_SERVICE_ACCOUNT_ID=$service_account_id"

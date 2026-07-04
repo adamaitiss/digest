@@ -10,7 +10,7 @@ import httpx
 from .config import WorkerConfig
 
 
-EMBED_ENDPOINT = "https://llm.api.cloud.yandex.net/foundationModels/v1/textEmbedding"
+EMBED_ENDPOINT = "https://ai.api.cloud.yandex.net/foundationModels/v1/textEmbedding"
 ASYNC_COMPLETION_ENDPOINT = "https://ai.api.cloud.yandex.net/foundationModels/v1/completionAsync"
 OPERATION_ENDPOINT = "https://operation.api.cloud.yandex.net/operations/{operation_id}"
 CLASSIFIER_ENDPOINT = "https://ai.api.cloud.yandex.net/foundationModels/v1/fewShotTextClassification"
@@ -30,6 +30,14 @@ TOPIC_LABELS = [
     "science",
     "global_news",
 ]
+
+
+def raise_for_status(response: httpx.Response, label: str) -> None:
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        body = response.text[:800].replace("\n", " ")
+        raise RuntimeError(f"{label} failed status={response.status_code} body={body}") from exc
 
 
 @dataclass(frozen=True)
@@ -60,14 +68,14 @@ class YandexAI:
             raise ValueError("YANDEX_API_KEY, YANDEX_IAM_TOKEN, function context token, or metadata token access is required")
 
     def embed_doc(self, text: str) -> tuple[list[float], AiUsage]:
-        model_uri = f"emb://{self.folder_id}/text-embeddings-v2-doc/"
+        model_uri = f"emb://{self.folder_id}/text-search-doc/latest"
         response = httpx.post(
             EMBED_ENDPOINT,
             headers=self.headers,
-            json={"modelUri": model_uri, "text": text[:6000], "dim": "256"},
+            json={"modelUri": model_uri, "text": text[:6000]},
             timeout=60,
         )
-        response.raise_for_status()
+        raise_for_status(response, "embedding")
         data = response.json()
         tokens = int(data.get("numTokens") or 0)
         return [float(value) for value in data["embedding"]], AiUsage(
@@ -80,18 +88,22 @@ class YandexAI:
 
     def classify_topic(self, text: str) -> tuple[str, AiUsage]:
         model_uri = f"cls://{self.folder_id}/yandexgpt-lite/latest"
-        response = httpx.post(
-            CLASSIFIER_ENDPOINT,
-            headers=self.headers,
-            json={
-                "modelUri": model_uri,
-                "text": text[:3500],
-                "taskDescription": "Categorize a news article by its title and snippet.",
-                "labels": TOPIC_LABELS,
-            },
-            timeout=60,
-        )
-        response.raise_for_status()
+        payload = {
+            "modelUri": model_uri,
+            "text": text[:3500],
+            "taskDescription": "Categorize a news article by its title and snippet.",
+            "labels": TOPIC_LABELS,
+        }
+        response = None
+        for attempt in range(5):
+            response = httpx.post(CLASSIFIER_ENDPOINT, headers=self.headers, json=payload, timeout=60)
+            if response.status_code != 429:
+                break
+            time.sleep(1.2 * (attempt + 1))
+        if response is None:
+            raise RuntimeError("topic classifier did not return a response")
+        raise_for_status(response, "topic classifier")
+        time.sleep(1.1)
         predictions = response.json().get("predictions", [])
         label = max(predictions, key=lambda item: item.get("confidence", 0)).get("label", "global_news")
         return str(label), AiUsage(
@@ -126,7 +138,7 @@ class YandexAI:
             ],
         }
         operation = httpx.post(ASYNC_COMPLETION_ENDPOINT, headers=self.headers, json=prompt, timeout=60)
-        operation.raise_for_status()
+        raise_for_status(operation, "async completion")
         result = self._wait_operation(operation.json()["id"])
         response = result["response"]
         text = response["alternatives"][0]["message"]["text"]
@@ -145,7 +157,7 @@ class YandexAI:
     def _wait_operation(self, operation_id: str) -> dict[str, Any]:
         for _ in range(60):
             response = httpx.get(OPERATION_ENDPOINT.format(operation_id=operation_id), headers=self.headers, timeout=30)
-            response.raise_for_status()
+            raise_for_status(response, "async operation")
             data = response.json()
             if data.get("done"):
                 return data

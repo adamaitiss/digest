@@ -15,6 +15,7 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 cp -R "$ROOT_DIR/workers/common" "$BUILD_DIR/common"
 cp "$ROOT_DIR/workers/requirements.txt" "$BUILD_DIR/requirements.txt"
+find "$BUILD_DIR" -type d -name __pycache__ -prune -exec rm -rf {} +
 
 yc iam service-account get --id "$SERVICE_ACCOUNT_ID" --format json >/dev/null
 runtime_json="$(yc serverless function runtime list --format json)"
@@ -51,11 +52,14 @@ build_environment() {
 deploy_function() {
   local name="$1"
   local cron="$2"
-  local trigger_name="digest-$name-timer"
+  local resource_name="${name//_/-}"
+  local function_name="digest-$resource_name"
+  local trigger_name="digest-$resource_name-timer"
+  local version_json
   cp "$ROOT_DIR/workers/functions/$name.py" "$BUILD_DIR/index.py"
-  yc serverless function create --name "digest-$name" --folder-id "$FOLDER_ID" >/dev/null 2>&1 || true
-  yc serverless function version create \
-    --function-name "digest-$name" \
+  yc serverless function create --name "$function_name" --folder-id "$FOLDER_ID" >/dev/null 2>&1 || true
+  version_json="$(yc serverless function version create \
+    --function-name "$function_name" \
     --folder-id "$FOLDER_ID" \
     --runtime "$RUNTIME" \
     --entrypoint "index.handler" \
@@ -64,17 +68,36 @@ deploy_function() {
     --service-account-id "$SERVICE_ACCOUNT_ID" \
     --metadata-options gce-http-endpoint=enabled,aws-v1-http-endpoint=disabled \
     --environment "$(build_environment)" \
-    --source-path "$BUILD_DIR"
+    --source-path "$BUILD_DIR" \
+    --format json)"
+
+  VERSION_JSON="$version_json" python3 - "$function_name" <<'PY'
+import json
+import os
+import sys
+
+version = json.loads(os.environ["VERSION_JSON"])
+print(
+    "deployed "
+    + sys.argv[1]
+    + " version="
+    + version["id"]
+    + " status="
+    + version.get("status", "unknown")
+)
+PY
 
   local function_id
-  function_id="$(yc serverless function get --name "digest-$name" --folder-id "$FOLDER_ID" --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
+  function_id="$(yc serverless function get --name "$function_name" --folder-id "$FOLDER_ID" --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
   yc serverless trigger delete "$trigger_name" --folder-id "$FOLDER_ID" >/dev/null 2>&1 || true
   yc serverless trigger create timer \
     --name "$trigger_name" \
     --cron-expression "$cron" \
     --invoke-function-id "$function_id" \
     --invoke-function-service-account-id "$SERVICE_ACCOUNT_ID" \
-    --folder-id "$FOLDER_ID"
+    --folder-id "$FOLDER_ID" \
+    --format json >/dev/null
+  echo "timer $trigger_name active"
 }
 
 deploy_function ingest "0 */4 * * ? *"

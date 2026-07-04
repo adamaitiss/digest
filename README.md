@@ -4,19 +4,25 @@ A private mobile PWA for swipe-training a personal RU/EN news recommender and re
 
 ## Current State
 
-Implemented locally:
-- React + Vite + TypeScript PWA app shell for Train, Digest, Saved, Profile, and Sources/health.
+Live systems are provisioned:
+
+- GitHub repository: https://github.com/adamaitiss/digest
+- GitHub Pages URL: https://adamaitiss.github.io/digest/
+- Supabase project: `kypzyekydodticqddwex`
+- Yandex folder: `b1gj5q3o1k1v91qo20td`
+- Yandex service account: `digest-pipeline` / `ajeafj047mmd4vpvhfqc`
+
+Implemented and verified:
+
+- React + Vite + TypeScript PWA app shell for Train, Digest, Saved, Profile, and source health.
 - Supabase SQL migrations for schema, pgvector, RLS, RPCs, and app views.
-- Real RSS source registry: 49 active feeds, 26 EN and 23 RU, validated on 2026-07-04.
-- Yandex Cloud Function worker code for `ingest`, `enrich`, `cluster_rank`, `generate_digest`, and `health_check`.
-- GitHub Actions CI and Pages deployment workflows with no scheduled triggers.
-- Unit tests and Playwright e2e tests.
+- Real RSS source registry: 49 active feeds, 26 EN and 23 RU.
+- Yandex Cloud Functions and Timer triggers for `ingest`, `enrich`, `cluster-rank`, `generate-digest`, and `health-check`.
+- Live pipeline run on 2026-07-04 created 871 article rows, 583 clusters, and a 15-item digest.
+- GitHub Actions CI and Pages deployment workflows have no `schedule:` triggers.
+- Pages deploy workflow passes with real Supabase public config.
 
-Live deployment is blocked on Supabase credentials/project access. See `NEEDS_DECISION.md`.
-
-Repository: https://github.com/adamaitiss/digest
-
-CI is passing on `main`. Pages deployment is intentionally blocked until real Supabase public config is available, so the production app is not published with demo data.
+Known current gap: this Codex environment cannot connect to `github.io` / GitHub Pages IPs, although GitHub API reports Pages enabled and the deploy workflow passed. Live UI interaction was therefore smoke-tested against the same Supabase-backed app on localhost; see `MVP_BUILD_REPORT.md`.
 
 ## Local Run
 
@@ -25,7 +31,7 @@ npm install
 npm run dev
 ```
 
-Without Supabase environment variables, the app uses demo data so the UI and PWA shell can be tested locally.
+Without Supabase environment variables, the app uses demo data so the UI and PWA shell can be tested locally. With `.env` populated, local dev uses the real Supabase project.
 
 ## Test
 
@@ -37,6 +43,8 @@ npm run build
 npm run test:e2e
 PYTHONPATH=workers python3 -m compileall -q workers
 ```
+
+`npm run test:db` requires Docker for the disposable pgvector database.
 
 ## Environment
 

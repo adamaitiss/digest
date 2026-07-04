@@ -58,7 +58,7 @@ roles = {
     if binding.get("subject", {}).get("type") == "serviceAccount"
     and binding.get("subject", {}).get("id") == service_account_id
 }
-required = {"functions.functionInvoker", "ai.models.user"}
+required = {"functions.functionInvoker", "ai.models.user", "ai.languageModels.user"}
 missing = sorted(required - roles)
 if missing:
     raise SystemExit(

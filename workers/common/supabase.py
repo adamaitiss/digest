@@ -64,6 +64,18 @@ class SupabaseClient:
         response.raise_for_status()
         return response.json()
 
+    def delete(self, table: str, filters: dict[str, str]) -> list[dict[str, Any]]:
+        response = httpx.delete(
+            f"{self.url}/rest/v1/{table}",
+            params=filters,
+            headers=self.headers,
+            timeout=60,
+        )
+        response.raise_for_status()
+        if response.text:
+            return response.json()
+        return []
+
     def rpc(self, function_name: str, payload: dict[str, Any] | None = None) -> Any:
         response = httpx.post(
             f"{self.url}/rest/v1/rpc/{function_name}",

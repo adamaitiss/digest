@@ -35,7 +35,9 @@ def run(_config: Any, supabase: SupabaseClient) -> dict[str, Any]:
         "event_cluster",
         f"select=*&latest_update_at=gte.{horizon}&order=ranking_score.desc&limit=80",
     )
-    selected = select_digest_clusters(clusters)
+    enriched_clusters = [cluster for cluster in clusters if str(cluster.get("representative_summary") or "").strip()]
+    selected = select_digest_clusters(enriched_clusters if len(enriched_clusters) >= 10 else clusters)
+    cost_estimate = ai_cost_today(supabase, today)
     digest = supabase.upsert(
         "digest",
         [
@@ -46,12 +48,13 @@ def run(_config: Any, supabase: SupabaseClient) -> dict[str, Any]:
                 "item_count": len(selected),
                 "topic_groups": sorted({group_name(cluster) for cluster in selected}),
                 "status": "ready",
-                "cost_estimate_usd": 0,
+                "cost_estimate_usd": cost_estimate,
             }
         ],
         on_conflict="user_id,digest_date",
     )[0]
     digest_id = digest["digest_id"]
+    supabase.delete("digest_item", {"digest_id": f"eq.{digest_id}"})
 
     item_rows = []
     for rank, cluster in enumerate(selected, start=1):
@@ -62,6 +65,8 @@ def run(_config: Any, supabase: SupabaseClient) -> dict[str, Any]:
             ]
         )
         summary = str(cluster.get("representative_summary") or "")
+        if not summary.strip():
+            summary = literal_summary(str(cluster.get("representative_headline") or ""), None)
         if not verify_grounded(summary, source_text)["passed"]:
             summary = literal_summary(str(cluster.get("representative_headline") or ""), summary)
         topic = str(cluster.get("topic") or "global_news")
@@ -83,6 +88,14 @@ def run(_config: Any, supabase: SupabaseClient) -> dict[str, Any]:
     if item_rows:
         supabase.upsert("digest_item", item_rows, on_conflict="digest_id,cluster_id")
     return {"digest_created": True, "digest_id": digest_id, "items": len(item_rows)}
+
+
+def ai_cost_today(supabase: SupabaseClient, today: str) -> float:
+    rows = supabase.select(
+        "ai_cost_log",
+        f"select=estimated_cost_usd&created_at=gte.{today}T00:00:00Z",
+    )
+    return round(sum(float(row.get("estimated_cost_usd") or 0) for row in rows), 6)
 
 
 def select_digest_clusters(clusters: list[dict[str, Any]]) -> list[dict[str, Any]]:

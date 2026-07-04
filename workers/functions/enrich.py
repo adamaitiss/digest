@@ -15,21 +15,33 @@ def run(config: Any, supabase: SupabaseClient) -> dict[str, Any]:
     )
     ai = YandexAI(config) if config.use_ai else None
     enriched = 0
-    usage_rows: list[dict[str, Any]] = []
+    ai_calls_logged = 0
     for article in articles:
         source_text = "\n".join([str(article.get("title") or ""), str(article.get("snippet") or "")]).strip()
         updates: dict[str, Any] = {}
+        article_usage_rows: list[dict[str, Any]] = []
         if ai:
             embedding, usage = ai.embed_doc(source_text)
-            usage_rows.append(usage_to_row(usage, article.get("article_id")))
+            article_usage_rows.append(usage_to_row(usage, article.get("article_id")))
             topic, usage = ai.classify_topic(source_text)
-            usage_rows.append(usage_to_row(usage, article.get("article_id")))
-            metadata, usage = ai.extract_metadata(source_text)
-            usage_rows.append(usage_to_row(usage, article.get("article_id")))
+            article_usage_rows.append(usage_to_row(usage, article.get("article_id")))
+            metadata_error = None
+            try:
+                metadata, usage = ai.extract_metadata(source_text)
+                article_usage_rows.append(usage_to_row(usage, article.get("article_id")))
+            except Exception as exc:  # noqa: BLE001 - refusal or safety block should degrade per item
+                metadata = deterministic_enrichment(article)
+                metadata_error = str(exc)
             summary = str(metadata.get("summary") or literal_summary(str(article.get("title")), article.get("snippet")))
             grounding = verify_grounded(summary, source_text)
             if not grounding["passed"]:
                 summary = literal_summary(str(article.get("title")), article.get("snippet"))
+            if metadata_error:
+                grounding = {
+                    "passed": True,
+                    "fallback": "metadata_generation_failed",
+                    "error": metadata_error[:300],
+                }
             updates = {
                 "embedding": vector_literal(embedding),
                 "topic": topic,
@@ -47,11 +59,12 @@ def run(config: Any, supabase: SupabaseClient) -> dict[str, Any]:
         else:
             updates = deterministic_enrichment(article)
         supabase.update("article", updates, {"article_id": f"eq.{article['article_id']}"})
+        if article_usage_rows:
+            supabase.insert("ai_cost_log", article_usage_rows)
+            ai_calls_logged += len(article_usage_rows)
         enriched += 1
 
-    if usage_rows:
-        supabase.insert("ai_cost_log", usage_rows)
-    return {"articles_enriched": enriched, "ai_enabled": bool(ai), "ai_calls_logged": len(usage_rows)}
+    return {"articles_enriched": enriched, "ai_enabled": bool(ai), "ai_calls_logged": ai_calls_logged}
 
 
 def deterministic_enrichment(article: dict[str, Any]) -> dict[str, Any]:

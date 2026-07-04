@@ -2,52 +2,74 @@
 
 Last updated: 2026-07-04
 
-## Blocking Live MVP Completion
+## Resolved
 
 ### Supabase project access
 
-Status: blocked.
+Status: resolved.
 
-What is missing:
-- No Supabase CLI is installed locally.
-- No `SUPABASE_ACCESS_TOKEN`, project ref, database URL, anon key, or service-role key is available in the local environment.
-- A Playwright browser check of `https://supabase.com/dashboard/projects` redirected to the Supabase sign-in page, so the browser automation context does not have the already-authenticated dashboard session described in the goal.
+- Project `kypzyekydodticqddwex` exists.
+- Both migrations are applied.
+- Auth Site URL is set to `https://adamaitiss.github.io/digest/`.
+- Local `.env` contains real public and service-role Supabase credentials.
+- Credentials authenticate successfully.
+- Authenticated RPC/view checks pass.
 
-Why it blocks:
-- I cannot provision the Supabase project, apply `supabase/migrations/*.sql`, configure magic-link Site URL/redirects, obtain the public anon key for the PWA build, or set the service-role key for Yandex Cloud Functions without authenticated Supabase project access.
-- Completion criteria 2, 6, 7, and 8 require live Supabase verification, not local/demo data.
-- The GitHub Pages workflow now intentionally fails unless `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` repository secrets are set, so a demo-backed production PWA is not accidentally published.
+### GitHub Pages production config
 
-Next action needed:
-- Provide a Supabase access token/project ref/service-role key through a secure local mechanism, or open an authenticated Supabase dashboard session in the browser context Codex can control.
+Status: resolved.
 
-### Yandex Cloud deployment depends on Supabase outputs
-
-Status: partially available, blocked downstream.
-
-What is available:
-- The local Yandex CLI has an active cloud/folder configuration.
-
-What is still missing or downstream:
-- Yandex function deployment requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, which come from the blocked Supabase setup.
-- The worker now uses the attached Yandex Cloud Function service account IAM token for AI Studio calls by default. A separate `YANDEX_API_KEY` is optional, not required, as long as the service account has the needed AI Studio access.
-
-Why it blocks:
-- Completion criteria 3 and 6 require deployed Yandex Cloud Functions and at least one real live pipeline cycle writing to Supabase.
+- Repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set.
+- GitHub Pages is enabled with workflow deployment.
+- Deploy Pages workflow run `28708434747` passed with `VITE_USE_DEMO_DATA=false`.
 
 ### Yandex scoped service-account role binding
 
-Status: blocked.
+Status: resolved.
 
-What happened:
-- I created a scoped service account named `digest-pipeline` with ID `ajeafj047mmd4vpvhfqc`.
-- Binding the required roles failed with `PermissionDenied`:
+- Service account `digest-pipeline` / `ajeafj047mmd4vpvhfqc` is used by the deployed functions and timers.
+- Required roles are bound and verified:
   - `functions.functionInvoker`
   - `ai.models.user`
+  - `ai.languageModels.user`
+- `scripts/preflight_live_setup.sh` passes.
 
-Why it blocks:
-- The completion criteria require the Yandex functions to run under a scoped service account.
-- The existing `codex` service account has broad `editor` access, which is not the scoped runtime identity required for the live MVP.
+### Yandex Cloud deployment and live pipeline
 
-Next action needed:
-- Grant the current deploy identity permission to bind roles, or manually grant `functions.functionInvoker` and `ai.models.user` on folder `b1gj5q3o1k1v91qo20td` to service account `ajeafj047mmd4vpvhfqc`.
+Status: resolved.
+
+- Functions and Timer triggers are deployed for `ingest`, `enrich`, `cluster-rank`, `generate-digest`, and `health-check`.
+- Manual live run produced 871 articles, 583 clusters, a 15-item digest, and 202 AI cost rows.
+- Latest digest ID: `05641840-e28a-4c9c-bcf2-0978faaaf420`.
+
+## Still Open
+
+### GitHub Pages reachability from this Codex environment
+
+Status: open verification blocker, not a product decision.
+
+What happened:
+
+- GitHub Pages deployment passed and GitHub API reports the site active at `https://adamaitiss.github.io/digest/`.
+- This Codex environment cannot connect to `github.io` / GitHub Pages IPs. `curl -4`, `curl -6`, WebKit, Chromium, and the in-app browser timed out.
+- `github.com` and GitHub API are reachable from the same environment, so this appears specific to the GitHub Pages network path.
+
+Impact:
+
+- The literal live-site browser smoke test on `https://adamaitiss.github.io/digest/` could not be completed from this machine.
+- The same app was smoke-tested locally against the real Supabase project with a magic-link-verified session.
+
+Next action:
+
+- Open `https://adamaitiss.github.io/digest/` from the user's iPhone or another network that can reach GitHub Pages and run the smoke test in `RUNBOOK.md`.
+
+### Out-of-band health alert destination
+
+Status: optional but recommended.
+
+- `ALERT_WEBHOOK_URL` is empty.
+- Health failures are recorded in Supabase `job_run`, but no external alert is sent.
+
+Next action:
+
+- Provide a webhook URL if out-of-band health alerts should be enabled, then redeploy Yandex functions.

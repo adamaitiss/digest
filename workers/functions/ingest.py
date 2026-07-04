@@ -33,9 +33,28 @@ def run(_config: Any, supabase: SupabaseClient) -> dict[str, Any]:
         }
         supabase.update("source", update_payload, {"source_id": f"eq.{source['source_id']}"})
 
-    inserted = supabase.upsert("article", article_rows, on_conflict="article_key")
+    unique_article_rows = dedupe_by_key(article_rows, "article_key")
+    inserted: list[dict[str, Any]] = []
+    for batch in chunked(unique_article_rows, 100):
+        inserted.extend(supabase.upsert("article", batch, on_conflict="article_key"))
     supabase.insert("source_health_log", health_rows)
-    return {"sources_checked": len(sources), "articles_seen": len(article_rows), "articles_upserted": len(inserted)}
+    return {
+        "sources_checked": len(sources),
+        "articles_seen": len(article_rows),
+        "duplicate_articles_skipped": len(article_rows) - len(unique_article_rows),
+        "articles_upserted": len(inserted),
+    }
+
+
+def chunked(rows: list[dict[str, Any]], size: int) -> list[list[dict[str, Any]]]:
+    return [rows[index : index + size] for index in range(0, len(rows), size)]
+
+
+def dedupe_by_key(rows: list[dict[str, Any]], key: str) -> list[dict[str, Any]]:
+    unique: dict[Any, dict[str, Any]] = {}
+    for row in rows:
+        unique[row[key]] = row
+    return list(unique.values())
 
 
 def handler(event: dict[str, Any] | None = None, context: Any = None) -> dict[str, Any]:
