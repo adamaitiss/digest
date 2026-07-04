@@ -83,6 +83,8 @@ Screenshots from the local real-backend smoke test:
 - GitHub Actions CI run `28709974443` passed on `main` for commit `ef8137d`.
 - GitHub Pages deploy run `28709974463` passed on `main` for commit `ef8137d`.
 - Live Pages Smoke run `28710032056` passed from GitHub-hosted infrastructure: Chromium loaded `https://adamaitiss.github.io/digest/` at 402 x 874, rendered the `Personal News Swipe Digest` auth screen, found the `Send magic link` control, fetched the manifest, verified `display=standalone` and `start_url=/digest/`, and found no relevant console errors/warnings.
+- GitHub Actions CI run `28710081576` passed on `main` for commit `bc13654`.
+- GitHub Pages deploy run `28710081569` passed on `main` for commit `bc13654`.
 
 ## Optimization / Cleanup Pass
 
