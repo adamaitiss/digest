@@ -56,7 +56,7 @@ SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 YANDEX_FOLDER_ID=
 YANDEX_SERVICE_ACCOUNT_ID=
-YANDEX_API_KEY=
+YANDEX_API_KEY= # optional fallback; functions use attached service-account IAM token by default
 ALERT_WEBHOOK_URL=
 ```
 

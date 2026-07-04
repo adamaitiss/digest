@@ -15,8 +15,8 @@ def now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
-def run_job(name: str, fn: Callable[[WorkerConfig, SupabaseClient], dict[str, Any]]) -> dict[str, Any]:
-    config = load_config()
+def run_job(name: str, fn: Callable[[WorkerConfig, SupabaseClient], dict[str, Any]], context: Any = None) -> dict[str, Any]:
+    config = load_config(context)
     supabase = SupabaseClient(config.supabase_url, config.supabase_service_role_key)
     started = now_iso()
     try:
@@ -66,4 +66,3 @@ def send_alert(webhook_url: str, job_name: str, detail: dict[str, Any]) -> None:
         )
     except Exception:
         return
-

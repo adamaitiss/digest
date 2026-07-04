@@ -10,6 +10,8 @@
 - Production build: `npm run build`
 - Browser e2e: `npm run test:e2e`
 - Python worker syntax check: `PYTHONPATH=workers python3 -m compileall -q workers`
+- Live setup preflight: `./scripts/preflight_live_setup.sh`
+- Ensure scoped Yandex service account: `YANDEX_FOLDER_ID=... ./scripts/ensure_yandex_service_account.sh`
 - Regenerate source seed migration after editing `data/source_registry_v1.json`: `python3 scripts/generate_source_seed.py`
 
 ## Live Setup Notes

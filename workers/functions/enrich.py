@@ -102,9 +102,8 @@ def usage_to_row(usage: AiUsage, article_id: Any) -> dict[str, Any]:
 
 
 def handler(event: dict[str, Any] | None = None, context: Any = None) -> dict[str, Any]:
-    return run_job("enrich", run)
+    return run_job("enrich", run, context)
 
 
 if __name__ == "__main__":
     print(handler())
-

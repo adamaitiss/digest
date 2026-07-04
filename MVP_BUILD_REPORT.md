@@ -36,12 +36,13 @@ Not yet completed:
 - GitHub Pages deployment connected to real Supabase anon config.
 - The deploy workflow is intentionally guarded so Pages will not publish a demo-backed production app while Supabase secrets are missing.
 - Yandex Cloud Function deployment with Supabase service-role environment variables.
+- Scoped Yandex service account role binding: `digest-pipeline` was created, but the current Yandex credential cannot grant it the required `functions.functionInvoker` and `ai.models.user` roles.
 - Real live pipeline cycle producing a 10-15 item digest in Supabase.
 - iPhone live login/training/digest smoke test.
 
 ## Deviations
 
-No deliberate stack deviation was made. The implemented architecture follows the stack decision: static React/Vite PWA, Supabase tables/RLS/RPC/views, Yandex Cloud Functions workers, Yandex AI Studio client code, and GitHub Actions only for CI/CD.
+No deliberate stack deviation was made. The implemented architecture follows the stack decision: static React/Vite PWA, Supabase tables/RLS/RPC/views, Yandex Cloud Functions workers, Yandex AI Studio client code using the attached service-account IAM token by default, and GitHub Actions only for CI/CD.
 
 Because live credentials are blocked, the deployed/live acceptance criteria remain pending rather than being replaced by a different technology.
 

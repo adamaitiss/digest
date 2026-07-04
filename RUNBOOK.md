@@ -38,6 +38,26 @@ or paste/apply:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
+6. Run live setup preflight:
+
+```bash
+VITE_SUPABASE_URL=... \
+VITE_SUPABASE_ANON_KEY=... \
+SUPABASE_URL=... \
+SUPABASE_SERVICE_ROLE_KEY=... \
+YANDEX_FOLDER_ID=... \
+YANDEX_SERVICE_ACCOUNT_ID=... \
+./scripts/preflight_live_setup.sh
+```
+
+If the scoped Yandex service account is not ready, run:
+
+```bash
+YANDEX_FOLDER_ID=... ./scripts/ensure_yandex_service_account.sh
+```
+
+The target service account should have `functions.functionInvoker` and `ai.models.user`.
+
 ## Yandex Functions
 
 Deploy from a local machine with Yandex CLI access:
@@ -47,9 +67,10 @@ YANDEX_FOLDER_ID=... \
 YANDEX_SERVICE_ACCOUNT_ID=... \
 SUPABASE_URL=... \
 SUPABASE_SERVICE_ROLE_KEY=... \
-YANDEX_API_KEY=... \
 ./scripts/deploy_yandex_functions.sh
 ```
+
+The deployed functions use the attached Yandex service account IAM token for AI Studio calls. `YANDEX_API_KEY` is optional for debugging or fallback, not the default credential path.
 
 Schedules:
 - `ingest`: every 4 hours.

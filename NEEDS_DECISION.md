@@ -30,7 +30,24 @@ What is available:
 
 What is still missing or downstream:
 - Yandex function deployment requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, which come from the blocked Supabase setup.
-- The deployment script also expects an AI Studio API key or equivalent function environment credential for model calls.
+- The worker now uses the attached Yandex Cloud Function service account IAM token for AI Studio calls by default. A separate `YANDEX_API_KEY` is optional, not required, as long as the service account has the needed AI Studio access.
 
 Why it blocks:
 - Completion criteria 3 and 6 require deployed Yandex Cloud Functions and at least one real live pipeline cycle writing to Supabase.
+
+### Yandex scoped service-account role binding
+
+Status: blocked.
+
+What happened:
+- I created a scoped service account named `digest-pipeline` with ID `ajeafj047mmd4vpvhfqc`.
+- Binding the required roles failed with `PermissionDenied`:
+  - `functions.functionInvoker`
+  - `ai.models.user`
+
+Why it blocks:
+- The completion criteria require the Yandex functions to run under a scoped service account.
+- The existing `codex` service account has broad `editor` access, which is not the scoped runtime identity required for the live MVP.
+
+Next action needed:
+- Grant the current deploy identity permission to bind roles, or manually grant `functions.functionInvoker` and `ai.models.user` on folder `b1gj5q3o1k1v91qo20td` to service account `ajeafj047mmd4vpvhfqc`.

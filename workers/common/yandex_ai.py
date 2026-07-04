@@ -14,6 +14,7 @@ EMBED_ENDPOINT = "https://llm.api.cloud.yandex.net/foundationModels/v1/textEmbed
 ASYNC_COMPLETION_ENDPOINT = "https://ai.api.cloud.yandex.net/foundationModels/v1/completionAsync"
 OPERATION_ENDPOINT = "https://operation.api.cloud.yandex.net/operations/{operation_id}"
 CLASSIFIER_ENDPOINT = "https://ai.api.cloud.yandex.net/foundationModels/v1/fewShotTextClassification"
+METADATA_TOKEN_ENDPOINT = "http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token"
 
 TOPIC_LABELS = [
     "business",
@@ -51,8 +52,12 @@ class YandexAI:
             self.headers["x-folder-id"] = self.folder_id
         elif config.yandex_api_key:
             self.headers["Authorization"] = f"Api-Key {config.yandex_api_key}"
+        elif config.yandex_use_metadata_token:
+            iam_token = fetch_metadata_iam_token()
+            self.headers["Authorization"] = f"Bearer {iam_token}"
+            self.headers["x-folder-id"] = self.folder_id
         else:
-            raise ValueError("YANDEX_API_KEY or YANDEX_IAM_TOKEN is required")
+            raise ValueError("YANDEX_API_KEY, YANDEX_IAM_TOKEN, function context token, or metadata token access is required")
 
     def embed_doc(self, text: str) -> tuple[list[float], AiUsage]:
         model_uri = f"emb://{self.folder_id}/text-embeddings-v2-doc/"
@@ -159,3 +164,15 @@ def parse_json_object(value: str) -> dict[str, Any]:
         text = text[start : end + 1]
     return json.loads(text)
 
+
+def fetch_metadata_iam_token() -> str:
+    response = httpx.get(
+        METADATA_TOKEN_ENDPOINT,
+        headers={"Metadata-Flavor": "Google"},
+        timeout=5,
+    )
+    response.raise_for_status()
+    token = response.json().get("access_token")
+    if not token:
+        raise RuntimeError("Yandex metadata token response did not include access_token")
+    return str(token)
