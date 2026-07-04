@@ -13,7 +13,8 @@ test("mobile training, digest, saved, and profile flow render", async ({ page })
   await expect(page.getByText("Markets and Policy")).toBeVisible();
   await page.getByText(/Fed signals caution/).first().click();
   await expect(page.getByText("Why selected")).toBeVisible();
-  await page.getByRole("button", { name: "Useful" }).click();
+  await expect(page.getByRole("button", { name: "Not useful" })).toBeVisible();
+  await page.getByRole("button", { name: "Useful", exact: true }).click();
 
   await page.getByRole("button", { name: "Saved" }).click();
   await expect(page.getByPlaceholder("Search saved items")).toBeVisible();
@@ -21,6 +22,8 @@ test("mobile training, digest, saved, and profile flow render", async ({ page })
 
   await page.getByRole("button", { name: "Profile" }).click();
   await expect(page.getByText("Interest description")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reset" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
   await expect(page.getByText("Source health")).toBeVisible();
 });
 
@@ -33,5 +36,10 @@ test("PWA manifest is reachable", async ({ page, request }) => {
   const manifest = await response.json();
   expect(manifest.name).toContain("Personal News Swipe Digest");
   expect(manifest.display).toBe("standalone");
-});
 
+  const appleIconHref = await page.locator('link[rel="apple-touch-icon"]').getAttribute("href");
+  expect(appleIconHref).toContain("apple-touch-icon.png");
+  const appleIconResponse = await request.get(new URL(appleIconHref!, page.url()).toString());
+  expect(appleIconResponse.ok()).toBe(true);
+  expect(appleIconResponse.headers()["content-type"]).toContain("image/png");
+});

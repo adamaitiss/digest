@@ -5,6 +5,7 @@ from typing import Any
 
 from common.clustering import cluster_articles
 from common.job import run_job
+from common.profile import authorized_user_profile
 from common.scoring import score_article
 from common.supabase import SupabaseClient
 
@@ -15,8 +16,7 @@ def run(_config: Any, supabase: SupabaseClient) -> dict[str, Any]:
         "article",
         f"select=*&published_at=gte.{horizon}&order=published_at.desc&limit=600",
     )
-    profiles = supabase.select("user_profile", "select=*&order=updated_at.desc&limit=1")
-    profile = profiles[0] if profiles else None
+    profile = authorized_user_profile(supabase)
     groups = cluster_articles(articles)
     cluster_rows: list[dict[str, Any]] = []
     article_updates = 0

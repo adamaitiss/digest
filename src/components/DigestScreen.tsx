@@ -12,6 +12,7 @@ interface DigestScreenProps {
 
 const feedbackOptions: { value: DigestFeedback; label: string }[] = [
   { value: "useful", label: "Useful" },
+  { value: "not_useful", label: "Not useful" },
   { value: "important", label: "Important" },
   { value: "duplicate", label: "Duplicate" },
   { value: "too_shallow", label: "Too shallow" },
@@ -58,7 +59,10 @@ export function DigestScreen({ snapshot, busy, onFeedback }: DigestScreenProps) 
         ) : null}
 
         {digest?.status === "failed" ? (
-          <StatusMessage title="Digest generation failed" body="Open Sources to inspect the latest job run." />
+          <StatusMessage
+            title="Digest generation failed"
+            body="Open Profile and check Source health for the latest pipeline status."
+          />
         ) : null}
 
         {digest?.status === "ready" ? (
@@ -161,4 +165,3 @@ export function DigestScreen({ snapshot, busy, onFeedback }: DigestScreenProps) 
     </main>
   );
 }
-

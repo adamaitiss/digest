@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, type AppTab } from "./components/AppShell";
 import { AuthGate } from "./components/AuthGate";
 import { DigestScreen } from "./components/DigestScreen";
@@ -23,12 +23,14 @@ interface AuthenticatedAppProps {
   repository: ReturnType<typeof getRepository>;
 }
 
-function AuthenticatedApp({ repository }: AuthenticatedAppProps) {
+export function AuthenticatedApp({ repository }: AuthenticatedAppProps) {
   const [activeTab, setActiveTab] = useState<AppTab>("train");
   const [snapshot, setSnapshot] = useState<RepositorySnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pendingTrainingWrites, setPendingTrainingWrites] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const pendingTrainingWritesRef = useRef(0);
 
   async function reload() {
     const nextSnapshot = await repository.loadSnapshot();
@@ -72,8 +74,56 @@ function AuthenticatedApp({ repository }: AuthenticatedAppProps) {
     }
   }
 
-  async function onReact(card: TrainingCard, reaction: ReactionType) {
-    await runAction(() => repository.recordReaction(card, reaction));
+  function changePendingTrainingWrites(delta: number) {
+    pendingTrainingWritesRef.current = Math.max(0, pendingTrainingWritesRef.current + delta);
+    setPendingTrainingWrites(pendingTrainingWritesRef.current);
+  }
+
+  function onReact(card: TrainingCard, reaction: ReactionType): Promise<void> {
+    const currentSnapshot = snapshot;
+    if (!currentSnapshot || !currentSnapshot.cards.some((candidate) => candidate.cardId === card.cardId)) {
+      return Promise.resolve();
+    }
+
+    const reloadWhenSettled = currentSnapshot.cards.length <= 1;
+    setError(null);
+    setSnapshot((current) => {
+      if (!current || !current.cards.some((candidate) => candidate.cardId === card.cardId)) {
+        return current;
+      }
+      const remainingCards = current.cards.filter((candidate) => candidate.cardId !== card.cardId);
+      return {
+        ...current,
+        cards: remainingCards,
+        trainingSession: advanceTrainingSession(current.trainingSession, card, reaction)
+      };
+    });
+
+    changePendingTrainingWrites(1);
+    void repository
+      .recordReaction(card, reaction)
+      .then(async () => {
+        if (reloadWhenSettled && pendingTrainingWritesRef.current === 1) {
+          await reload();
+        }
+      })
+      .catch(async (caught: unknown) => {
+        setError(caught instanceof Error ? caught.message : "Could not save reaction.");
+        try {
+          await reload();
+        } catch (reloadError) {
+          setError(reloadError instanceof Error ? reloadError.message : "Could not reload app data.");
+        }
+      })
+      .finally(() => {
+        changePendingTrainingWrites(-1);
+      });
+    return Promise.resolve();
+  }
+
+  function onOpenSummary(card: TrainingCard): Promise<void> {
+    void repository.recordOpenSummary(card).catch(() => undefined);
+    return Promise.resolve();
   }
 
   async function onUndo() {
@@ -92,6 +142,23 @@ function AuthenticatedApp({ repository }: AuthenticatedAppProps) {
 
   async function onUnsave(savedItemId: string) {
     await runAction(() => repository.unsaveItem(savedItemId));
+  }
+
+  async function onResetLearnedPreferences() {
+    await runAction(() => repository.resetLearnedPreferences().then(() => undefined));
+  }
+
+  async function onExportData() {
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await repository.exportUserData();
+      downloadJson(data);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not export data.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function onSignOut() {
@@ -122,7 +189,14 @@ function AuthenticatedApp({ repository }: AuthenticatedAppProps) {
             </div>
           ) : null}
           {activeTab === "train" ? (
-            <TrainScreen snapshot={snapshot} busy={busy} onReact={onReact} onUndo={onUndo} />
+            <TrainScreen
+              snapshot={snapshot}
+              busy={busy}
+              pendingWrites={pendingTrainingWrites}
+              onReact={onReact}
+              onOpenSummary={onOpenSummary}
+              onUndo={onUndo}
+            />
           ) : null}
           {activeTab === "digest" ? (
             <DigestScreen snapshot={snapshot} busy={busy} onFeedback={onFeedback} />
@@ -135,6 +209,8 @@ function AuthenticatedApp({ repository }: AuthenticatedAppProps) {
               snapshot={snapshot}
               busy={busy}
               onUpdateProfile={onUpdateProfile}
+              onResetLearnedPreferences={onResetLearnedPreferences}
+              onExportData={onExportData}
               onSignOut={onSignOut}
             />
           ) : null}
@@ -144,3 +220,42 @@ function AuthenticatedApp({ repository }: AuthenticatedAppProps) {
   );
 }
 
+function advanceTrainingSession(
+  session: RepositorySnapshot["trainingSession"],
+  card: TrainingCard,
+  reaction: ReactionType
+): RepositorySnapshot["trainingSession"] {
+  const cardsReactedTo = session.cardsReactedTo + 1;
+  return {
+    ...session,
+    cardsShown: Math.max(session.cardsShown, cardsReactedTo),
+    cardsReactedTo,
+    positiveCount: isPositiveReaction(reaction) ? session.positiveCount + 1 : session.positiveCount,
+    negativeCount: isNegativeReaction(reaction) ? session.negativeCount + 1 : session.negativeCount,
+    savesCount: reaction === "save" ? session.savesCount + 1 : session.savesCount,
+    explorationCardsShown:
+      card.queueReason === "exploration" ? session.explorationCardsShown + 1 : session.explorationCardsShown,
+    mustKnowCardsShown:
+      card.queueReason === "must_know" ? session.mustKnowCardsShown + 1 : session.mustKnowCardsShown
+  };
+}
+
+function isPositiveReaction(reaction: ReactionType): boolean {
+  return ["interesting", "save", "show_more_like_this", "important_not_interesting"].includes(reaction);
+}
+
+function isNegativeReaction(reaction: ReactionType): boolean {
+  return ["not_interesting", "too_obvious", "too_noisy", "hide_topic", "hide_source"].includes(reaction);
+}
+
+function downloadJson(data: Record<string, unknown>) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `digest-export-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}

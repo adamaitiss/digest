@@ -34,6 +34,8 @@ create table if not exists auth.users (
   created_at timestamptz not null default now()
 );
 create role authenticated nologin;
+create role anon nologin;
+create role supabase_auth_admin nologin;
 create or replace function auth.uid()
 returns uuid
 language sql
@@ -44,17 +46,32 @@ $$;
 SQL
 
 docker cp "$TMP_SQL" "$CONTAINER_NAME:/tmp/supabase-auth-mock.sql"
-docker cp "$ROOT_DIR/supabase/migrations/001_initial_schema.sql" "$CONTAINER_NAME:/tmp/001_initial_schema.sql"
-docker cp "$ROOT_DIR/supabase/migrations/002_seed_source_registry.sql" "$CONTAINER_NAME:/tmp/002_seed_source_registry.sql"
 
 docker exec "$CONTAINER_NAME" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/supabase-auth-mock.sql
-docker exec "$CONTAINER_NAME" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/001_initial_schema.sql
-docker exec "$CONTAINER_NAME" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/002_seed_source_registry.sql
+for migration in "$ROOT_DIR"/supabase/migrations/*.sql; do
+  migration_name="$(basename "$migration")"
+  docker cp "$migration" "$CONTAINER_NAME:/tmp/$migration_name"
+  docker exec "$CONTAINER_NAME" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "/tmp/$migration_name"
+done
 docker exec "$CONTAINER_NAME" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "select count(*) as active_sources from public.source where active;"
 
 cat >"$TMP_SQL" <<'SQL'
 insert into auth.users (id, email)
-values ('00000000-0000-0000-0000-000000000001', 'smoke@example.com');
+values
+  ('00000000-0000-0000-0000-000000000001', 'stanislav.adamaytis@gmail.com'),
+  ('00000000-0000-0000-0000-000000000002', 'blocked@example.com');
+
+set role supabase_auth_admin;
+do $$
+begin
+  if public.before_user_created_allowlist('{"user":{"email":"stanislav.adamaytis@gmail.com"}}'::jsonb) <> '{}'::jsonb then
+    raise exception 'authorized email was rejected';
+  end if;
+  if not (public.before_user_created_allowlist('{"user":{"email":"blocked@example.com"}}'::jsonb) ? 'error') then
+    raise exception 'blocked email was allowed';
+  end if;
+end $$;
+reset role;
 
 with inserted_cluster as (
   insert into public.event_cluster (
@@ -147,6 +164,23 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001
 
 select user_id from public.get_or_create_profile();
 select count(*) as cards_before_reaction from public.training_cards_today;
+select public.record_card_reaction(article_id, cluster_id, 'open_summary', 'summary_open')
+from public.article
+where article_key = 'smoke-article';
+do $$
+declare
+  state jsonb;
+  visible_cards integer;
+begin
+  select public.get_training_session_state() into state;
+  if (state->>'cardsReactedTo')::integer <> 0 then
+    raise exception 'summary_open unexpectedly incremented cardsReactedTo';
+  end if;
+  select count(*) into visible_cards from public.training_cards_today;
+  if visible_cards <> 1 then
+    raise exception 'summary_open unexpectedly consumed the training card';
+  end if;
+end $$;
 select public.record_card_reaction(article_id, cluster_id, 'interesting', 'training_queue')
 from public.article
 where article_key = 'smoke-article';
@@ -208,10 +242,51 @@ set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', false);
 select count(*) as digest_rows from public.digest_today;
 select count(*) as digest_items from public.digest_items_view;
-select public.record_digest_feedback(digest_item_id, 'useful')
+select public.record_digest_feedback(digest_item_id, 'not_useful')
 from public.digest_items_view
 limit 1;
 select count(*) as health_rows from public.source_health_status;
+select public.update_profile('Macro policy and AI regulation');
+do $$
+declare
+  profile public.user_profile;
+  export jsonb;
+begin
+  select public.reset_learned_preferences() into profile;
+  if profile.interest_description <> 'Macro policy and AI regulation' then
+    raise exception 'reset should preserve interest description';
+  end if;
+  if profile.learned_topic_weights <> '{}'::jsonb or profile.demoted_sources <> '[]'::jsonb then
+    raise exception 'reset did not clear learned preferences';
+  end if;
+  select public.export_user_data() into export;
+  if not (export ? 'profile') or not (export ? 'signals') or not (export ? 'digests') then
+    raise exception 'export_user_data missing expected keys';
+  end if;
+end $$;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', false);
+do $$
+declare
+  row_count integer;
+begin
+  select count(*) into row_count from public.source;
+  if row_count <> 0 then
+    raise exception 'unauthorized user can read sources';
+  end if;
+  select count(*) into row_count from public.training_cards_today;
+  if row_count <> 0 then
+    raise exception 'unauthorized user can read training cards';
+  end if;
+end $$;
+do $$
+begin
+  perform public.get_or_create_profile();
+  raise exception 'unauthorized profile RPC unexpectedly succeeded';
+exception
+  when insufficient_privilege then
+    null;
+end $$;
 SQL
 
 docker cp "$TMP_SQL" "$CONTAINER_NAME:/tmp/rpc-view-smoke.sql"

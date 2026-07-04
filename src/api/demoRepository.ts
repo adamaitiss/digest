@@ -86,6 +86,9 @@ export function createDemoRepository(): AppRepository {
         await this.saveCard(card);
       }
     },
+    async recordOpenSummary(): Promise<void> {
+      return undefined;
+    },
     async undoLastReaction(): Promise<void> {
       const previous = reactionHistory.pop();
       if (!previous) {
@@ -125,6 +128,33 @@ export function createDemoRepository(): AppRepository {
         items: digest.items.map((candidate) =>
           candidate.id === item.id ? { ...candidate, feedbackStatus: feedback } : candidate
         )
+      };
+    },
+    async resetLearnedPreferences(): Promise<UserProfile> {
+      profile = {
+        ...profile,
+        learnedTopicWeights: {},
+        learnedCountryWeights: {},
+        learnedEntityWeights: {},
+        learnedSourcePreferences: {},
+        blockedSources: [],
+        demotedSources: [],
+        blockedTopics: [],
+        demotedTopics: [],
+        noveltyPreference: 0.5,
+        businessSignificancePreference: 0.7,
+        languagePreferences: ["en", "ru"],
+        updatedAt: new Date().toISOString()
+      };
+      return clone(profile);
+    },
+    async exportUserData(): Promise<Record<string, unknown>> {
+      return {
+        exportedAt: new Date().toISOString(),
+        profile: clone(profile),
+        saved: clone(saved),
+        signals: clone(reactionHistory),
+        digest: clone(digest)
       };
     }
   };

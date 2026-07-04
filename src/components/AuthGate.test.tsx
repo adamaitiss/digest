@@ -29,10 +29,13 @@ function createRepository(): {
       loadSnapshot: vi.fn(),
       updateProfile: vi.fn(),
       recordReaction: vi.fn(),
+      recordOpenSummary: vi.fn(),
       undoLastReaction: vi.fn(),
       saveCard: vi.fn(),
       unsaveItem: vi.fn(),
-      recordDigestFeedback: vi.fn()
+      recordDigestFeedback: vi.fn(),
+      resetLearnedPreferences: vi.fn(),
+      exportUserData: vi.fn()
     } as unknown as AppRepository,
     emitAuthChange(user: SessionUser | null) {
       listener?.(user);

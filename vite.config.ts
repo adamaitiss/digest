@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icons/icon.svg", "apple-touch-icon.svg"],
+      includeAssets: ["icons/icon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "Personal News Swipe Digest",
         short_name: "Digest",

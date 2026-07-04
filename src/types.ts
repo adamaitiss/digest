@@ -157,8 +157,11 @@ export interface AppRepository {
   loadSnapshot(): Promise<RepositorySnapshot>;
   updateProfile(description: string): Promise<UserProfile>;
   recordReaction(card: TrainingCard, reaction: ReactionType): Promise<void>;
+  recordOpenSummary(card: TrainingCard): Promise<void>;
   undoLastReaction(): Promise<void>;
   saveCard(card: TrainingCard): Promise<void>;
   unsaveItem(savedItemId: string): Promise<void>;
   recordDigestFeedback(item: DigestItem, feedback: DigestFeedback): Promise<void>;
+  resetLearnedPreferences(): Promise<UserProfile>;
+  exportUserData(): Promise<Record<string, unknown>>;
 }

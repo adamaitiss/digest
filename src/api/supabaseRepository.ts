@@ -85,6 +85,25 @@ function mapSaved(row: Record<string, unknown>): SavedItem {
   };
 }
 
+function mapProfile(row: Record<string, unknown>): UserProfile {
+  return {
+    userId: String(row.user_id),
+    interestDescription: String(row.interest_description ?? ""),
+    learnedTopicWeights: (row.learned_topic_weights as Record<string, number> | null) ?? {},
+    learnedCountryWeights: (row.learned_country_weights as Record<string, number> | null) ?? {},
+    learnedEntityWeights: (row.learned_entity_weights as Record<string, number> | null) ?? {},
+    learnedSourcePreferences: (row.learned_source_preferences as Record<string, number> | null) ?? {},
+    blockedSources: (row.blocked_sources as string[] | null) ?? [],
+    demotedSources: (row.demoted_sources as string[] | null) ?? [],
+    blockedTopics: (row.blocked_topics as string[] | null) ?? [],
+    demotedTopics: (row.demoted_topics as string[] | null) ?? [],
+    noveltyPreference: Number(row.novelty_preference ?? 0.5),
+    businessSignificancePreference: Number(row.business_significance_preference ?? 0.7),
+    languagePreferences: (row.language_preferences as ("en" | "ru")[] | null) ?? ["en", "ru"],
+    updatedAt: String(row.updated_at ?? "")
+  };
+}
+
 function createUrlSessionHydrator(client: SupabaseClient): () => Promise<void> {
   let hydrationPromise: Promise<void> | null = null;
 
@@ -182,23 +201,7 @@ export function createSupabaseRepository(client: SupabaseClient = createBrowserS
       }
 
       return {
-        profile: {
-          userId: String(profileRow.user_id),
-          interestDescription: String(profileRow.interest_description ?? ""),
-          learnedTopicWeights: (profileRow.learned_topic_weights as Record<string, number> | null) ?? {},
-          learnedCountryWeights: (profileRow.learned_country_weights as Record<string, number> | null) ?? {},
-          learnedEntityWeights: (profileRow.learned_entity_weights as Record<string, number> | null) ?? {},
-          learnedSourcePreferences:
-            (profileRow.learned_source_preferences as Record<string, number> | null) ?? {},
-          blockedSources: (profileRow.blocked_sources as string[] | null) ?? [],
-          demotedSources: (profileRow.demoted_sources as string[] | null) ?? [],
-          blockedTopics: (profileRow.blocked_topics as string[] | null) ?? [],
-          demotedTopics: (profileRow.demoted_topics as string[] | null) ?? [],
-          noveltyPreference: Number(profileRow.novelty_preference ?? 0.5),
-          businessSignificancePreference: Number(profileRow.business_significance_preference ?? 0.7),
-          languagePreferences: (profileRow.language_preferences as ("en" | "ru")[] | null) ?? ["en", "ru"],
-          updatedAt: String(profileRow.updated_at ?? "")
-        },
+        profile: mapProfile(profileRow),
         cards: requireData<Record<string, unknown>[]>(cardsResult.data, cardsResult.error).map(mapCard),
         digest,
         saved: requireData<Record<string, unknown>[]>(savedResult.data, savedResult.error).map(mapSaved),
@@ -221,22 +224,7 @@ export function createSupabaseRepository(client: SupabaseClient = createBrowserS
     async updateProfile(description: string): Promise<UserProfile> {
       const result = await client.rpc("update_profile", { p_interest_description: description });
       const profile = requireData<Record<string, unknown>>(result.data, result.error);
-      return {
-        userId: String(profile.user_id),
-        interestDescription: String(profile.interest_description ?? ""),
-        learnedTopicWeights: (profile.learned_topic_weights as Record<string, number> | null) ?? {},
-        learnedCountryWeights: (profile.learned_country_weights as Record<string, number> | null) ?? {},
-        learnedEntityWeights: (profile.learned_entity_weights as Record<string, number> | null) ?? {},
-        learnedSourcePreferences: (profile.learned_source_preferences as Record<string, number> | null) ?? {},
-        blockedSources: (profile.blocked_sources as string[] | null) ?? [],
-        demotedSources: (profile.demoted_sources as string[] | null) ?? [],
-        blockedTopics: (profile.blocked_topics as string[] | null) ?? [],
-        demotedTopics: (profile.demoted_topics as string[] | null) ?? [],
-        noveltyPreference: Number(profile.novelty_preference ?? 0.5),
-        businessSignificancePreference: Number(profile.business_significance_preference ?? 0.7),
-        languagePreferences: (profile.language_preferences as ("en" | "ru")[] | null) ?? ["en", "ru"],
-        updatedAt: String(profile.updated_at ?? "")
-      };
+      return mapProfile(profile);
     },
     async recordReaction(card: TrainingCard, reaction: ReactionType): Promise<void> {
       const { error } = await client.rpc("record_card_reaction", {
@@ -244,6 +232,17 @@ export function createSupabaseRepository(client: SupabaseClient = createBrowserS
         p_cluster_id: card.clusterId,
         p_signal_type: reaction,
         p_context: "training_queue"
+      });
+      if (error) {
+        throw error;
+      }
+    },
+    async recordOpenSummary(card: TrainingCard): Promise<void> {
+      const { error } = await client.rpc("record_card_reaction", {
+        p_article_id: card.articleId,
+        p_cluster_id: card.clusterId,
+        p_signal_type: "open_summary",
+        p_context: "summary_open"
       });
       if (error) {
         throw error;
@@ -278,6 +277,15 @@ export function createSupabaseRepository(client: SupabaseClient = createBrowserS
       if (error) {
         throw error;
       }
+    },
+    async resetLearnedPreferences(): Promise<UserProfile> {
+      const result = await client.rpc("reset_learned_preferences");
+      const profile = requireData<Record<string, unknown>>(result.data, result.error);
+      return mapProfile(profile);
+    },
+    async exportUserData(): Promise<Record<string, unknown>> {
+      const result = await client.rpc("export_user_data");
+      return requireData<Record<string, unknown>>(result.data, result.error);
     }
   };
 }

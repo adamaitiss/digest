@@ -53,7 +53,7 @@ def run_job(name: str, fn: Callable[[WorkerConfig, SupabaseClient], dict[str, An
           )
       finally:
           if config.alert_webhook_url:
-              send_alert(config.alert_webhook_url, name, detail)
+              send_alert(config.alert_webhook_url, name, alert_detail(detail))
       raise
 
 
@@ -66,3 +66,13 @@ def send_alert(webhook_url: str, job_name: str, detail: dict[str, Any]) -> None:
         )
     except Exception:
         return
+
+
+def alert_detail(detail: dict[str, Any]) -> dict[str, Any]:
+    redacted: dict[str, Any] = {}
+    if "error" in detail:
+        redacted["error"] = str(detail["error"])[:500]
+    for key in ("failed_jobs", "stale_sources", "stale_source_ids"):
+        if key in detail:
+            redacted[key] = detail[key]
+    return redacted

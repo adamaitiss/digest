@@ -1,4 +1,4 @@
-import { ChevronRight, LogOut, Save } from "lucide-react";
+import { Download, LogOut, RotateCcw, Save } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { RepositorySnapshot } from "../types";
 
@@ -6,10 +6,19 @@ interface ProfileScreenProps {
   snapshot: RepositorySnapshot;
   busy: boolean;
   onUpdateProfile(description: string): Promise<void>;
+  onResetLearnedPreferences(): Promise<void>;
+  onExportData(): Promise<void>;
   onSignOut(): Promise<void>;
 }
 
-export function ProfileScreen({ snapshot, busy, onUpdateProfile, onSignOut }: ProfileScreenProps) {
+export function ProfileScreen({
+  snapshot,
+  busy,
+  onUpdateProfile,
+  onResetLearnedPreferences,
+  onExportData,
+  onSignOut
+}: ProfileScreenProps) {
   const [description, setDescription] = useState(snapshot.profile.interestDescription);
   const activeSources = snapshot.sources.filter((source) => source.active);
 
@@ -29,13 +38,16 @@ export function ProfileScreen({ snapshot, busy, onUpdateProfile, onSignOut }: Pr
     } context. You read both RU and EN sources and prefer grounded source links.`;
   }, [snapshot.profile.learnedCountryWeights, snapshot.profile.learnedTopicWeights]);
 
+  function resetLearnedPreferences() {
+    if (window.confirm("Reset learned preferences? Saved items and history will stay intact.")) {
+      void onResetLearnedPreferences();
+    }
+  }
+
   return (
     <main className="min-h-full bg-white">
       <header className="sticky top-0 z-20 border-b border-line bg-white px-5 pb-3 pt-4">
-        <div className="grid grid-cols-2 rounded-none border-b border-line text-center">
-          <span className="border-b-2 border-action pb-2 text-sm font-semibold text-action">Profile</span>
-          <span className="pb-2 text-sm font-semibold text-graphite">Sources</span>
-        </div>
+        <h1 className="text-xl font-semibold text-ink">Profile</h1>
       </header>
 
       <section className="space-y-5 px-5 py-4">
@@ -72,6 +84,27 @@ export function ProfileScreen({ snapshot, busy, onUpdateProfile, onSignOut }: Pr
           <PreferenceRow label="Blocked sources" value={snapshot.profile.blockedSources.length} />
           <PreferenceRow label="Demoted sources" value={snapshot.profile.demotedSources.length} />
           <PreferenceRow label="Demoted topics" value={snapshot.profile.demotedTopics.length} />
+        </section>
+
+        <section className="grid grid-cols-2 gap-2 border-b border-line pb-5">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={resetLearnedPreferences}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-line px-3 text-sm font-semibold text-graphite disabled:opacity-45"
+          >
+            <RotateCcw aria-hidden="true" size={16} />
+            Reset
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void onExportData()}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-line px-3 text-sm font-semibold text-graphite disabled:opacity-45"
+          >
+            <Download aria-hidden="true" size={16} />
+            Export
+          </button>
         </section>
 
         <section>
@@ -128,11 +161,7 @@ function PreferenceRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex min-h-11 items-center justify-between py-2">
       <span className="text-sm text-ink">{label}</span>
-      <span className="inline-flex items-center gap-2 text-sm text-graphite">
-        {value}
-        <ChevronRight aria-hidden="true" size={17} />
-      </span>
+      <span className="text-sm text-graphite">{value}</span>
     </div>
   );
 }
-

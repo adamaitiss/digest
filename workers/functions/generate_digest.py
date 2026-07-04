@@ -6,6 +6,7 @@ from typing import Any
 
 from common.grounding import confidence_note, literal_summary, verify_grounded
 from common.job import run_job
+from common.profile import authorized_user_profile
 from common.supabase import SupabaseClient
 
 
@@ -24,10 +25,9 @@ GROUP_NAMES = {
 
 
 def run(_config: Any, supabase: SupabaseClient) -> dict[str, Any]:
-    profiles = supabase.select("user_profile", "select=*&order=updated_at.desc&limit=1")
-    if not profiles:
-        return {"digest_created": False, "reason": "no_user_profile"}
-    profile = profiles[0]
+    profile = authorized_user_profile(supabase)
+    if not profile:
+        return {"digest_created": False, "reason": "no_authorized_user_profile"}
     user_id = profile["user_id"]
     today = date.today().isoformat()
     horizon = (datetime.now(UTC) - timedelta(days=3)).isoformat().replace("+00:00", "Z")
@@ -54,6 +54,7 @@ def run(_config: Any, supabase: SupabaseClient) -> dict[str, Any]:
         on_conflict="user_id,digest_date",
     )[0]
     digest_id = digest["digest_id"]
+    detach_digest_item_signals(supabase, digest_id)
     supabase.delete("digest_item", {"digest_id": f"eq.{digest_id}"})
 
     item_rows = []
@@ -88,6 +89,18 @@ def run(_config: Any, supabase: SupabaseClient) -> dict[str, Any]:
     if item_rows:
         supabase.upsert("digest_item", item_rows, on_conflict="digest_id,cluster_id")
     return {"digest_created": True, "digest_id": digest_id, "items": len(item_rows)}
+
+
+def detach_digest_item_signals(supabase: SupabaseClient, digest_id: str) -> None:
+    rows = supabase.select("digest_item", f"select=digest_item_id&digest_id=eq.{digest_id}")
+    for row in rows:
+        digest_item_id = row.get("digest_item_id")
+        if digest_item_id:
+            supabase.update(
+                "user_signal",
+                {"digest_item_id": None},
+                {"digest_item_id": f"eq.{digest_item_id}"},
+            )
 
 
 def ai_cost_today(supabase: SupabaseClient, today: str) -> float:

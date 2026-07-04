@@ -4,6 +4,7 @@ coverage/
 playwright-report/
 test-results/
 .playwright-mcp/
+.claude/
 .tsbuildinfo
 vite.config.js
 vite.config.d.ts
@@ -21,3 +22,4 @@ __pycache__/
 workers/.venv/
 workers/package/
 workers/*.zip
+supabase/.temp/

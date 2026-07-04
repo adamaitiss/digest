@@ -10,6 +10,7 @@
     "lint": "tsc -b --pretty false",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:workers": "PYTHONPATH=workers python3 -m unittest discover -s workers/tests -p 'test_*.py'",
     "test:db": "./scripts/validate_supabase_migrations.sh",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"

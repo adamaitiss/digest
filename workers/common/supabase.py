@@ -88,6 +88,30 @@ class SupabaseClient:
             return response.json()
         return None
 
+    def list_auth_users(self, per_page: int = 100) -> list[dict[str, Any]]:
+        users: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            response = httpx.get(
+                f"{self.url}/auth/v1/admin/users",
+                params={"page": page, "per_page": per_page},
+                headers=self.headers,
+                timeout=30,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if isinstance(payload, dict):
+                page_users = payload.get("users", [])
+            elif isinstance(payload, list):
+                page_users = payload
+            else:
+                page_users = []
+            users.extend(page_users)
+            if len(page_users) < per_page:
+                break
+            page += 1
+        return users
+
 
 def source_query(active_only: bool = True) -> str:
     if active_only:

@@ -13,7 +13,16 @@ import httpx
 from dateutil import parser as date_parser
 
 
-USER_AGENT = "PersonalNewsSwipeDigest/0.1 (+https://github.com/adamaitiss/digest)"
+USER_AGENT = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
+    "Mobile/15E148 Safari/604.1"
+)
+RSS_HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9,ru;q=0.8",
+}
 MAX_ITEMS_PER_SOURCE = 25
 ACTIVE_HORIZON = timedelta(days=3)
 
@@ -26,7 +35,7 @@ def fetch_feed(source: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, 
     try:
         response = httpx.get(
             str(rss_url),
-            headers={"User-Agent": USER_AGENT, "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml"},
+            headers=RSS_HEADERS,
             timeout=20,
             follow_redirects=True,
         )

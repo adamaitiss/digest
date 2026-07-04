@@ -1,0 +1,20 @@
+project_id = "digest"
+
+[auth]
+enabled = true
+site_url = "https://adamaitiss.github.io/digest/"
+additional_redirect_urls = ["http://127.0.0.1:5173/digest/", "http://localhost:5173/digest/"]
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+max_frequency = "1m"
+otp_length = 8
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/before_user_created_allowlist"

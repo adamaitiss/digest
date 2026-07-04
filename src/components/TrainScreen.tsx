@@ -8,7 +8,9 @@ import { StatusMessage } from "./StatusMessage";
 interface TrainScreenProps {
   snapshot: RepositorySnapshot;
   busy: boolean;
+  pendingWrites: number;
   onReact(card: TrainingCard, reaction: ReactionType): Promise<void>;
+  onOpenSummary(card: TrainingCard): Promise<void>;
   onUndo(): Promise<void>;
 }
 
@@ -18,9 +20,10 @@ const reasonLabel: Record<TrainingCard["queueReason"], string> = {
   must_know: "Must know"
 };
 
-export function TrainScreen({ snapshot, busy, onReact, onUndo }: TrainScreenProps) {
+export function TrainScreen({ snapshot, busy, pendingWrites, onReact, onOpenSummary, onUndo }: TrainScreenProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [openedSummaryCardIds, setOpenedSummaryCardIds] = useState<Set<string>>(() => new Set());
   const card = snapshot.cards[0];
 
   const progress = useMemo(() => {
@@ -35,6 +38,8 @@ export function TrainScreen({ snapshot, busy, onReact, onUndo }: TrainScreenProp
       }
       if (Math.abs(mx) > 100 || vx > 0.45) {
         cancel();
+        setDetailOpen(false);
+        setMoreOpen(false);
         void onReact(card, mx > 0 ? "interesting" : "not_interesting");
       }
     },
@@ -48,6 +53,22 @@ export function TrainScreen({ snapshot, busy, onReact, onUndo }: TrainScreenProp
     setDetailOpen(false);
     setMoreOpen(false);
     await onReact(card, reaction);
+  }
+
+  function toggleDetail() {
+    if (!card) {
+      return;
+    }
+    const willOpen = !detailOpen;
+    setDetailOpen(willOpen);
+    if (willOpen && !openedSummaryCardIds.has(card.cardId)) {
+      setOpenedSummaryCardIds((current) => {
+        const next = new Set(current);
+        next.add(card.cardId);
+        return next;
+      });
+      void onOpenSummary(card);
+    }
   }
 
   return (
@@ -80,7 +101,7 @@ export function TrainScreen({ snapshot, busy, onReact, onUndo }: TrainScreenProp
             <button
               type="button"
               className="block w-full text-left"
-              onClick={() => setDetailOpen((open) => !open)}
+              onClick={toggleDetail}
             >
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-graphite">
                 <span>{card.sourceName}</span>
@@ -103,7 +124,7 @@ export function TrainScreen({ snapshot, busy, onReact, onUndo }: TrainScreenProp
               <button
                 type="button"
                 className="flex w-full items-center justify-between text-left"
-                onClick={() => setDetailOpen((open) => !open)}
+                onClick={toggleDetail}
               >
                 <span className="text-sm font-semibold text-ink">Why shown</span>
                 <span className="text-lg leading-none text-graphite">{detailOpen ? "⌃" : "⌄"}</span>
@@ -179,7 +200,7 @@ export function TrainScreen({ snapshot, busy, onReact, onUndo }: TrainScreenProp
             label="Undo"
             hint="Last action"
             icon={<RotateCcw aria-hidden="true" size={23} />}
-            disabled={busy}
+            disabled={busy || pendingWrites > 0}
             onClick={() => void onUndo()}
           />
         </div>
