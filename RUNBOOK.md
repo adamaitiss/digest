@@ -12,8 +12,8 @@ Current workflow status:
 
 - GitHub Pages is enabled with `build_type=workflow`.
 - Repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured.
-- Latest CI workflow run `28710792185` passed on `main` for commit `4409a1a`.
-- Latest Deploy Pages workflow run `28710792194` passed on rerun attempt 2 for commit `4409a1a`.
+- CI workflow run `28710792185` passed on `main` for commit `4409a1a`.
+- Deploy Pages workflow run `28710792194` passed on rerun attempt 2 for commit `4409a1a`.
 - Live Pages Smoke workflow run `28710933294` passed against `https://adamaitiss.github.io/digest/` at 402 x 874, including authenticated Train, Digest, feedback, save, and unsave actions.
 - Yandex Timer triggers are active for all five pipeline jobs.
 - Scheduled pipeline work belongs in Yandex Timer triggers; GitHub Actions workflows must not use `schedule:`.
